@@ -4,6 +4,10 @@ Planned updates:
 - Build share/save system.
     > Public build database where players can share and save their builds, optionally having their own build saves.
 
+Known issues:
+- Mobile UI goofs.
+    > Some parts of the UI on phone are misplaced.
+- Wrong number of skill points.
 ----
 
 This project was refactored and rewritten from [Alecboo](https://github.com/Alecaboo) their [Ode to Misery](https://github.com/Alecaboo/ohthemisery), which was originally made by [Albin](https://github.com/albarv340) and [FlamingoBike](https://github.com/FlamingoBike) their project [Oh the Misery](https://github.com/albarv340/ohthemisery).
