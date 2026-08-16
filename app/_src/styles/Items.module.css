@@ -1,0 +1,1159 @@
+/**
+ * get location name colors from here
+ * https://github.com/TeamMonumenta/monumenta-plugins-public/blob/master/plugins/paper/src/main/java/com/playmonumenta/plugins/itemstats/enums/Location.java
+ */
+
+.main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.itemTile {
+    font-size: 1em;
+    line-height: 1.3;
+    width: 280px;
+    box-sizing: border-box;
+    margin: 15px;
+    background: #110110;
+    border: 3px solid #2c0860;
+    border-radius: 0;
+    box-shadow: var(--shadow-elevated);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text-2);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+:global(html[data-theme='light']) .itemTile {
+    background: #6639622d;
+}
+
+.checkboxWithLabel {
+    outline: 2px solid var(--glass-border);
+}
+
+.noSituationals {
+    color: var(--text-2);
+    font-style: italic;
+}
+
+.noSituationals,
+.checkboxWithLabel {
+    background-color: var(--glass-2);
+    padding: 4px;
+    margin: 2px;
+    width: fit-content;
+    height: 40px;
+}
+
+.checkboxWithLabel > * {
+    padding-left: 3px;
+}
+
+.grayedout {
+    color: #888;
+}
+
+.imageIcon {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.itemsContainer {
+    display: flex;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+}
+
+/* Bootstrap rows add a gutter padding to every direct child; strip it so
+   tiles/stat-cards size by their own margins (keeps 6 tiles on one line at 1920x1080). */
+.builderCol {
+    padding: 0 !important;
+}
+
+.builderStatCol {
+    padding-inline: 0 !important;
+}
+
+.skeletonGrid {
+    display: flex;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+}
+
+.skeleton {
+    background: var(--glass-2);
+    border: 2px solid var(--glass-border);
+    animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonTile {
+    width: 280px;
+    height: 220px;
+    margin: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.skeletonSearchForm {
+    width: min(1000px, 100%);
+    margin: 0 15px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--glass-1);
+    border: 2px solid var(--glass-border);
+}
+
+.skeletonRow {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.skeletonInput {
+    height: 42px;
+    flex: 1;
+    min-width: 140px;
+    border-width: 1px;
+}
+
+.skeletonButton {
+    height: 42px;
+    width: 120px;
+}
+
+.skeletonLine {
+    height: 16px;
+    width: 180px;
+    margin: 14px 0;
+}
+
+.skeletonIcon {
+    width: 80px;
+    height: 80px;
+    margin: 20px auto 12px;
+}
+
+.skeletonText {
+    height: 12px;
+    margin: 6px 14px;
+}
+
+.skeletonTextShort {
+    height: 12px;
+    margin: 6px 14px;
+    width: 60%;
+}
+
+.skeletonImportBar {
+    width: min(620px, 100%);
+    margin: 0 15px 24px;
+    display: flex;
+    gap: 8px;
+}
+
+.skeletonForm {
+    width: min(1000px, 100%);
+    margin: 0 15px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    background: var(--glass-1);
+    border: 2px solid var(--glass-border);
+}
+
+.skeletonSelectCol {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+}
+
+.skeletonLabel {
+    height: 14px;
+    width: 110px;
+}
+
+.skeletonSelect {
+    height: 42px;
+    width: 100%;
+    max-width: 260px;
+    border-width: 1px;
+}
+
+.skeletonStatCards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    margin: 24px 0;
+}
+
+.skeletonStatCard {
+    width: 230px;
+    height: 300px;
+}
+
+@keyframes skeletonPulse {
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.emptyState {
+    margin: 40px auto;
+    padding: 24px;
+    max-width: 420px;
+    text-align: center;
+    color: var(--text-2);
+    background: var(--glass-1);
+    border: 2px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.emptyState b {
+    color: var(--text-1);
+}
+
+.resultCount {
+    color: var(--text-2);
+    margin: 6px 0 10px;
+}
+
+.enchants {
+    display: flex;
+    flex-direction: column;
+}
+
+.starSpan {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.starSpan:hover {
+    text-decoration: underline;
+}
+
+.undiscovered {
+    color: #d80a3a;
+}
+
+.tier1,
+.tier2,
+.tier3,
+.tier4,
+.tier5,
+.infoText {
+    color: #545454;
+}
+
+.fish1,
+.fish2,
+.fish3,
+.fish4 {
+    color: #1dcc9a;
+}
+
+.fish5 {
+    color: #28facc;
+}
+
+.fish {
+    color: #1dcc9a;
+}
+
+.uncommon {
+    color: #bebebe;
+}
+
+.unique {
+    color: #c6a0c6;
+}
+
+.rare {
+    color: #49c0e2;
+}
+
+.artifact {
+    color: #ce2d27;
+}
+
+.attribrutes,
+.positiveStat {
+    color: #5454fc;
+}
+
+.baseStats {
+    color: #00a800;
+}
+
+.positiveDefence {
+    color: #32cafc;
+}
+
+.masterworkStar {
+    color: #fcb23d;
+}
+
+.name {
+    font-weight: bold;
+}
+
+.underline {
+    text-decoration: underline;
+}
+
+.name.tier1,
+.name.tier2,
+.name.tier3,
+.name.tier4,
+.name.tier5 {
+    font-weight: normal !important;
+}
+
+.name.tier5 {
+    color: #54fc54;
+}
+
+.name.epic {
+    text-decoration: underline;
+}
+
+.epic {
+    color: #b114e0;
+    font-weight: bold;
+}
+
+.name.legendary {
+    text-decoration: underline;
+}
+
+.legendary {
+    color: #fcd400;
+    font-weight: bold;
+}
+
+.curses,
+.negativeStat {
+    color: #fc5454;
+}
+
+.white {
+    color: #fcfcfc;
+}
+
+.orange {
+    color: #fca800;
+}
+
+.magenta {
+    color: #fc54fc;
+}
+
+.lightBlue {
+    color: #49c0e2;
+}
+
+.yellow {
+    color: #fcfc54;
+}
+
+.lime {
+    color: #54fc54;
+}
+
+.pink {
+    color: #fc68b2;
+}
+
+.gray {
+    color: #545454;
+}
+
+.lightGray {
+    color: #a8a8a8;
+}
+
+.cyan {
+    color: #00a8a8;
+}
+
+.purple {
+    color: #a800a8;
+}
+
+.teal {
+    color: #46b4b3;
+}
+
+.blue {
+    color: #0c2ba0;
+}
+
+.brown {
+    color: #6f3508;
+}
+
+.indigo {
+    /* soon! */
+    color: #6f00ff;
+}
+
+.green {
+    /* putting these three in advance */
+    color: #4d6e23;
+}
+
+.red {
+    color: #d02e28;
+}
+
+.black {
+    color: #454040;
+}
+
+.shifting {
+    color: #7dfcd1;
+}
+
+.patron {
+    color: #80d817;
+}
+
+.forum {
+    color: #7e7e00;
+}
+
+.tOV {
+    color: #c6a0c6;
+}
+
+.docks {
+    color: #196281;
+}
+
+.carnival {
+    color: #ce2d27;
+}
+
+.delves {
+    color: #b26f27;
+}
+
+.rush {
+    color: #c01e55;
+}
+
+.horseman {
+    color: #8c3318;
+}
+
+.mist {
+    color: #664b5a;
+}
+
+.remorse,
+.remorsefulSkin {
+    color: #ebe3d3;
+}
+
+.depths {
+    color: #5c2c85;
+}
+
+.eldrask,
+.titanicSkin {
+    color: #85ccf7;
+}
+
+.hekawt,
+.eternitySkin {
+    color: #fcb23d;
+}
+
+.pORTAL {
+    color: #d9e5e0;
+}
+
+.ruin {
+    color: #316ca6;
+}
+
+.theWolfswood {
+    color: #4b8d4c;
+}
+
+.silverKnightsTomb {
+    color: #bebebe;
+}
+
+.peliasKeep {
+    color: #c2b9a3;
+}
+
+.sanguineHalls {
+    color: #a90000;
+}
+
+.questReward {
+    color: #c6a0c6;
+}
+
+.transmogrifier {
+    color: #6e2ca6;
+}
+
+.base {
+    color: #fcf774;
+}
+
+.godspore {
+    color: #416a28;
+}
+
+.positiveCharm {
+    color: #49c0e2;
+}
+
+.negativeCharm {
+    color: #ce2d27;
+}
+
+.alchemist {
+    color: #81d434;
+}
+
+.shaman {
+    color: #009900;
+}
+
+.warrior {
+    color: #d32818;
+}
+
+.cleric {
+    color: #ffc644;
+}
+
+.rogue {
+    color: #36393d;
+}
+
+.mage {
+    color: #a129d3;
+}
+
+.scout {
+    color: #59b4eb;
+}
+
+.warlock {
+    color: #f0489e;
+}
+
+.generalist {
+    color: #9d8d8f;
+}
+
+.islesDelves {
+    color: rgb(255, 237, 184);
+}
+
+.islesCasino {
+    color: #1772af;
+}
+
+.islesOverworld {
+    color: #31d4d9;
+}
+
+.celsianIsles {
+    color: rgb(244, 248, 255);
+}
+
+.valleyDelves {
+    color: rgb(255, 237, 184);
+}
+
+.royalArmory {
+    color: #c8fcfa;
+}
+
+.valleyCasino {
+    color: #eac662;
+}
+
+.valleyOverworld {
+    color: #d9ac31;
+}
+
+.kingsValley {
+    color: rgb(245, 255, 245);
+}
+
+.lowtideSmuggler {
+    color: #196281;
+}
+
+.azacor {
+    color: #fc6e54;
+}
+
+.winterEvent,
+.holidaySkin {
+    color: #adc0e0;
+}
+
+.halloweenEvent,
+.halloweenSkin {
+    color: #fca800;
+}
+
+.labs {
+    color: #b2aac1;
+}
+
+.willows,
+.storiedSkin {
+    color: #006300;
+}
+
+.sanctum {
+    color: #51a800;
+}
+
+.reverie {
+    color: #780e46;
+}
+
+.corridors,
+.ephemeralEnhancements {
+    color: #890000;
+}
+
+.verdant {
+    color: #158115;
+}
+
+.kaul {
+    color: #00a800;
+}
+
+.mythicReliquary {
+    color: #c2951a;
+}
+
+.seasonalPass {
+    color: #fcf33b;
+}
+
+.blitz {
+    color: #d7ab3d;
+}
+
+.ringCasino {
+    color: #c4c0b4;
+}
+
+.uganda {
+    color: #cd2d28;
+}
+
+.arenaOfTerth {
+    color: #fcfca8;
+}
+
+.soulwoven {
+    color: #7dfcd1;
+}
+
+.valentinesDay {
+    color: #ff7c7f;
+}
+
+.galleryOfFear {
+    color: #38af4d;
+}
+
+.threadwarpedSkin {
+    color: #6f4b88;
+}
+
+.intellectCrystallizer {
+    color: #80d817;
+}
+
+.theHoard,
+.greedSkin {
+    color: #d7ab3d;
+}
+
+.divineSkin {
+    color: #c4ecee;
+}
+
+.aprilsFools {
+    color: #d826c8;
+}
+
+.theEternalVigil {
+    color: #71979a;
+}
+
+.silverKnightsRemnants {
+    color: #eaca99;
+}
+
+.architectsRingOverworld {
+    color: #c7c9c9;
+}
+.hexfall {
+    color: #b131de;
+}
+.hunts {
+    color: #4c5b14;
+}
+
+.zenith {
+    color: #fca4f4;
+}
+.starpoint {
+    color: #3c2c74;
+}
+.sirius {
+    color: #2cd4c4;
+}
+.fishing {
+    color: #acd4d4;
+}
+.marinaNoir {
+    color: #37485a;
+}
+
+.twisted {
+    color: #6b0000;
+}
+
+.exalted {
+    display: inline-block;
+    position: relative;
+}
+
+.exalted > .exalted-star {
+    --size: clamp(15px, 1.5vw, 15px);
+    animation: scaleStar 1600ms ease forwards;
+
+    display: block;
+    height: var(--size);
+    left: var(--star-left);
+    position: absolute;
+    top: var(--star-top);
+    width: var(--size);
+}
+
+.exalted > .exalted-star > svg {
+    display: block;
+    opacity: 0.7;
+    animation: rotateStar 1900ms linear infinite;
+}
+
+.exalted > .exalted-star > svg > path {
+    fill: white;
+}
+
+.exalted > .exalted-text {
+    border: 2px solid white;
+    border-radius: 0;
+    padding: 2px 8px 2px 8px;
+    margin-right: 5px;
+}
+
+@keyframes scaleStar {
+    from,
+    to {
+        transform: scale(0);
+    }
+
+    50% {
+        transform: scale(1);
+    }
+}
+
+@keyframes rotateStar {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(180deg);
+    }
+}
+
+.recalcButton,
+.shareButton {
+    margin-block: 0.5vh;
+    margin-inline: 0.25vw;
+    padding: 0.5vh;
+    width: 100%;
+    animation: background-pan 5s linear infinite;
+    background: linear-gradient(to right, #3d3286, #2f4187, #3d3286);
+    background-size: 200%;
+    border: 2px solid rgba(61, 50, 134, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition:
+        filter 150ms ease,
+        transform 75ms ease;
+    color: var(--text-on-accent);
+}
+
+.recalcButton:hover,
+.shareButton:hover {
+    filter: brightness(125%);
+}
+
+.recalcButton:active,
+.shareButton:active {
+    transform: translateY(1px);
+}
+
+.resetButton {
+    margin-block: 0.5vh;
+    margin-inline: 0.25vw;
+    padding: 0.5vh;
+    width: 100%;
+    animation: background-pan 5s linear infinite;
+    background: linear-gradient(to right, #8c0b25, #a82a2a, #8c0b25);
+    background-size: 200%;
+    border: 2px solid rgba(140, 11, 37, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition:
+        filter 150ms ease,
+        transform 75ms ease;
+    color: var(--text-on-accent);
+}
+
+.builderPage {
+    color: var(--text-1);
+}
+
+.skillsSection {
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    padding: 8px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.skillsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.skillsTitle {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.skillTotal {
+    color: var(--text-2);
+    font-size: 13px;
+}
+
+.skillActionButton {
+    padding: 4px 12px;
+    border: 2px solid var(--control-border);
+    border-radius: 0;
+    background: var(--glass-1);
+    color: var(--text-1);
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.skillActionButton:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.skillsGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+.skillRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-2);
+    cursor: help;
+}
+
+.skillRow:hover {
+    border-color: var(--control-border-hover);
+}
+
+.skillName {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.skillPoints {
+    color: var(--text-2);
+    font-size: 13px;
+    min-width: 34px;
+    text-align: right;
+    font-family: monospace;
+}
+
+.skillChecks {
+    display: flex;
+    gap: 4px;
+}
+
+.skillChecks input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.skillEnhance {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: #9c59d1;
+    border-radius: 0;
+}
+
+.skillEnhance:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.skillsLoading {
+    color: var(--text-2);
+    text-align: center;
+    padding: 12px;
+}
+
+.importRow {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.importInput {
+    flex: 1;
+    background: var(--glass-2);
+    border: 1px solid var(--control-border);
+    color: var(--text-1);
+    padding: 8px 12px;
+    border-radius: 0;
+    font-size: 14px;
+}
+
+.importInput:focus {
+    border-color: var(--control-border-focus);
+    outline: none;
+}
+
+.importInput::placeholder {
+    color: var(--text-2);
+}
+
+.importButton {
+    padding: 8px 20px;
+    border: 2px solid var(--control-border);
+    border-radius: 0;
+    background: var(--glass-1);
+    color: var(--text-1);
+    font-weight: bold;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.importButton:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.importError {
+    color: #e0526b;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 4px;
+}
+
+.savedLink {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-1);
+    font-size: 14px;
+}
+
+.savedLink a {
+    color: var(--text-1);
+}
+
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modalPanel {
+    width: min(560px, 100%);
+    background: var(--glass-1);
+    border: 2px solid var(--glass-border);
+    padding: 20px;
+    box-shadow: var(--shadow-elevated);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modalTitle {
+    font-weight: bold;
+    font-size: 18px;
+    color: var(--text-1);
+}
+
+.modalClose {
+    border: 2px solid var(--control-border);
+    border-radius: 0;
+    background: var(--glass-1);
+    color: var(--text-1);
+    width: 32px;
+    height: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.modalClose:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.modalHint {
+    color: var(--text-2);
+    font-size: 13px;
+    margin: 0;
+}
+
+.builderPage :global(input[id^='react-select-'][id$='-input']) {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.builderStatCard {
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    box-shadow: var(--shadow-elevated);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.monoValue {
+    font-family: monospace;
+}
+
+.builderStatCard p b {
+    color: var(--text-2);
+    font-weight: 600;
+}
+
+.builderCompactInput {
+    padding: 7px 10px;
+    background: var(--glass-2);
+    border: 1px solid var(--control-border);
+    color: var(--text-1);
+    max-width: 160px;
+    font-family: monospace;
+}
+
+.resetButton:hover {
+    filter: brightness(125%);
+}
+
+.resetButton:active {
+    transform: translateY(1px);
+}
+
+@keyframes background-pan {
+    from {
+        background-position: 0% center;
+    }
+    to {
+        background-position: -200% center;
+    }
+}
+
+/* Phone: two-column stat cards so the builder needs less scrolling. */
+@media (max-width: 576px) {
+    .builderStatCard {
+        width: calc(50% - 16px) !important;
+    }
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+}

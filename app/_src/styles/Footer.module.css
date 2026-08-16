@@ -1,0 +1,164 @@
+.footer {
+    margin-top: 18px;
+    padding: 16px 14px;
+    border-top: 1px solid var(--glass-border);
+    background: var(--glass-1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.text {
+    color: var(--text-2);
+}
+
+.version {
+    color: var(--text-2);
+    opacity: 0.6;
+}
+
+.text b {
+    color: var(--text-1);
+}
+
+.links {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 0;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-1);
+    text-decoration: none;
+    transition:
+        filter 150ms ease,
+        transform 75ms ease,
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.textLink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 0;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-1);
+    text-decoration: none;
+    font-weight: bold;
+    transition:
+        filter 150ms ease,
+        transform 75ms ease,
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.textLink:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+    filter: brightness(115%);
+}
+
+.link:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+    filter: brightness(115%);
+}
+
+.link:active,
+.textLink:active {
+    transform: translateY(1px);
+}
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal {
+    background: var(--glass-1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-elevated);
+    max-width: 420px;
+    width: 100%;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modalTitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+.modalText {
+    margin: 0;
+    color: var(--text-2);
+}
+
+.modalClose {
+    align-self: flex-end;
+    padding: 8px 16px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-2);
+    color: var(--text-1);
+    font-weight: bold;
+}
+
+.modalClose:hover {
+    border-color: var(--control-border-hover);
+    filter: brightness(115%);
+}
+
+.vercel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+}
+
+.logo {
+    height: 1em;
+}
+
+/* next/image renders an <img> under the hood; invert it for dark UI. */
+.logo :global(img) {
+    filter: invert(1);
+    margin-bottom: 10px;
+}
+
+:global(html[data-theme='light']) .logo :global(img) {
+    filter: none;
+}
+
+@media (max-width: 600px) {
+    .inner {
+        justify-content: center;
+        text-align: center;
+    }
+}

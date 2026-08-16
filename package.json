@@ -1,0 +1,31 @@
+{
+  "name": "odm",
+  "version": "1.0.0",
+  "odm_version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 6678",
+    "update:items": "node scripts/update-items.mjs"
+  },
+  "dependencies": {
+    "@deepa/shared": "*",
+    "better-sqlite3": "^13.0.1",
+    "cookies-next": "^6.1.1",
+    "lz-string": "^1.5.0",
+    "next": "^16.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-select": "^5.10.2",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

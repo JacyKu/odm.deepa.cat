@@ -1,0 +1,347 @@
+'use client';
+
+import styles from '../styles/Items.module.css';
+import ItemTile from './items/itemTile';
+import MasterworkableItemTile from './items/masterworkableItemTile';
+import CharmTile from './items/charmTile';
+import ConsumableTile from './items/consumableTile';
+import SearchForm from './items/searchForm';
+import React from 'react';
+import InfiniteScroll from './infiniteScroll';
+import TranslatableText from './translatableText';
+import { HideLoreProvider } from './items/hideLoreContext';
+
+function extractFilterValues(data, baseKey) {
+    return Object.keys(data)
+        .filter((key) => key.includes(baseKey))
+        .map((key) => data[key]);
+}
+
+function getStatValue(value) {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+    if (typeof value === 'object' && 'value' in value) {
+        return value.value;
+    }
+    return value;
+}
+
+function getRelevantItems(data, itemData) {
+    let items = Object.keys(itemData);
+    items = items.filter((name) => itemData[name].base_item != 'Written Book');
+
+    if (data.searchName) {
+        // Check if the user inputted any "|" to search for multiple item names at once.
+        let names = data.searchName.split('|').map((name) => name.toLowerCase().trim());
+        items = items.filter((key) => {
+            let result = false;
+            names.forEach((term) => {
+                if (itemData[key].name.toLowerCase().includes(term)) {
+                    result = true;
+                    return;
+                }
+            });
+            return result;
+        });
+    }
+
+    if (data.searchLore) {
+        items = items.filter((name) => itemData[name].lore?.toLowerCase().includes(data.searchLore.toLowerCase()));
+    }
+
+    let wantedItemTypes = extractFilterValues(data, 'itemTypeSelect');
+    if (wantedItemTypes.length > 0) {
+        items = items.filter((name) => {
+            const type = itemData[name].type;
+            // Alchemist utensils are mainhands: match them under "Mainhand" too.
+            return wantedItemTypes.includes(type) || (type === 'Alchemist Bag' && wantedItemTypes.includes('Mainhand'));
+        });
+    }
+
+    let wantedRegions = extractFilterValues(data, 'regionSelect');
+    if (wantedRegions.length > 0) {
+        items = items.filter((name) => wantedRegions.includes(itemData[name].region));
+    }
+    let wantedEffects = extractFilterValues(data, 'effectSelect');
+
+    function toCamelCase(str) {
+        return str
+            .toLowerCase()
+            .split(' ')
+            .map((word, i) => (i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+            .join('');
+    }
+
+    if (wantedEffects.length > 0) {
+        const wantedEffectKeys = wantedEffects.map(toCamelCase);
+
+        items = items.filter(
+            (name) =>
+                itemData[name].effects &&
+                wantedEffectKeys.some((wantedKey) =>
+                    itemData[name].effects.some(
+                        (effectObj) => effectObj.EffectType.toLowerCase() === wantedKey.toLowerCase()
+                    )
+                )
+        );
+    }
+
+    let wantedTiers = extractFilterValues(data, 'tierSelect');
+    if (wantedTiers.length > 0) {
+        items = items.filter((name) => wantedTiers.includes(itemData[name].tier));
+    }
+
+    let wantedLocations = extractFilterValues(data, 'locationSelect');
+    if (wantedLocations.length > 0) {
+        items = items.filter((name) => wantedLocations.includes(itemData[name].location));
+    }
+
+    let wantedPois = extractFilterValues(data, 'poiSelect');
+    if (wantedPois.length > 0) {
+        items = items.filter((name) => itemData[name].extras?.poi && wantedPois.includes(itemData[name].extras.poi));
+    }
+
+    let wantedClasses = extractFilterValues(data, 'classSelect');
+    if (wantedClasses.length > 0) {
+        items = items.filter((name) => wantedClasses.includes(itemData[name].class_name));
+    }
+
+    let wantedBaseItems = extractFilterValues(data, 'baseItemSelect');
+    if (wantedBaseItems.length > 0) {
+        items = items.filter((name) => wantedBaseItems.includes(itemData[name].base_item));
+    }
+
+    // Charm power filters (operator + value pairs, e.g. power >= 8)
+    let powerOps = extractFilterValues(data, 'charmPowerOperatorSelect');
+    let powerVals = extractFilterValues(data, 'charmPowerValueSelect');
+    if (powerOps.length > 0) {
+        powerOps.forEach((op, i) => {
+            const target = Number(powerVals[i]);
+            if (isNaN(target)) return;
+            items = items.filter((name) => {
+                const power = Number(itemData[name].power);
+                switch (op) {
+                    case '>':
+                        return power > target;
+                    case '>=':
+                        return power >= target;
+                    case '<':
+                        return power < target;
+                    case '<=':
+                        return power <= target;
+                    case '!=':
+                        return power !== target;
+                    default:
+                        return power === target;
+                }
+            });
+        });
+    }
+
+    // NOT filters (exclude items whose selected field contains the typed value)
+    let notCategories = extractFilterValues(data, 'notCategorySelect');
+    let notValues = extractFilterValues(data, 'notValue');
+    const notFieldMap = {
+        'Item Type': (item) => item.type,
+        Tier: (item) => item.tier,
+        Location: (item) => item.location,
+        Region: (item) => item.region,
+        'Base Item': (item) => item.base_item,
+        'Charm Class': (item) => item.class_name,
+        POI: (item) => item.extras?.poi,
+    };
+    if (notCategories.length > 0) {
+        notCategories.forEach((cat, i) => {
+            const term = String(notValues[i] || '')
+                .trim()
+                .toLowerCase();
+            const getter = notFieldMap[cat];
+            if (!getter || !term) return;
+            items = items.filter((name) => {
+                const val = getter(itemData[name]);
+                return !(val !== undefined && val !== null && String(val).toLowerCase().includes(term));
+            });
+        });
+    }
+
+    // Quick-hide unobtainable items: key items, obfuscated items (Gallery of Fear
+    // and Darkest Depths), and Arena of Terth items.
+    if (data.hideUnobtainable) {
+        items = items.filter((name) => {
+            const item = itemData[name];
+            return item.tier !== 'Key' && item.tier !== 'Obfuscated' && item.location !== 'Arena of Terth';
+        });
+    }
+
+    // Quick-hide non-gear items: items with no enchants or stats.
+    if (data.hideNonGear) {
+        items = items.filter((name) => {
+            const stats = itemData[name].stats;
+            if (!stats) return false;
+            const values = Object.values(stats);
+            if (values.length === 0) return false;
+            return values.some((v) => {
+                const val = typeof v === 'object' && v !== null && 'value' in v ? v.value : v;
+                return typeof val === 'number' ? val !== 0 : Boolean(val);
+            });
+        });
+    }
+
+    // Reverse to give higher sorting priority to the earliest filters
+    let wantedCharmStats = extractFilterValues(data, 'charmStatSelect').reverse();
+    if (wantedCharmStats.length > 0) {
+        wantedCharmStats.forEach((stat) => {
+            let attributeName = stat
+                .split(' ')
+                .map((part) => part.toLowerCase())
+                .join('_');
+            attributeName = attributeName.includes('_%')
+                ? attributeName.replace('_%', '_percent')
+                : (attributeName += '_flat');
+            items = items.filter(
+                (name) => itemData[name].type == 'Charm' && itemData[name].stats[attributeName] != undefined
+            );
+            items = items.sort(
+                (item1, item2) =>
+                    (itemData[item2].stats[attributeName].value || 0) -
+                    (itemData[item1].stats[attributeName].value || 0)
+            );
+        });
+    }
+
+    // Reverse to give higher sorting priority to the earliest filters
+    let wantedItemStats = extractFilterValues(data, 'itemStatSelect').reverse();
+    if (wantedItemStats.length > 0) {
+        wantedItemStats.forEach((stat) => {
+            let attributeName = stat.toLowerCase().replaceAll(' ', '_');
+            items = items.filter(
+                (name) => itemData[name].stats != undefined && typeof itemData[name].stats[attributeName] != 'undefined'
+            );
+            items = items.sort((item1, item2) => {
+                const value2 = Number(getStatValue(itemData[item2].stats[attributeName]) || 0);
+                const value1 = Number(getStatValue(itemData[item1].stats[attributeName]) || 0);
+                return value2 - value1;
+            });
+        });
+    }
+
+    // Group up masterwork tiers by their name using an object, removing them from items.
+    let masterworkItems = {};
+    let otherPositionsToRemove = [];
+    // Go through the array in reverse order to have the splice work properly
+    // (items will go down in position if not removed from the end)
+    for (let i = items.length - 1; i >= 0; i--) {
+        let name = items[i];
+        if (itemData[name].masterwork != undefined) {
+            let itemName = itemData[name].name;
+            if (!masterworkItems[itemName]) {
+                masterworkItems[itemName] = { items: [], lowestPosition: 9999999, lowestPositionName: null };
+            }
+            masterworkItems[itemName].items.push(itemData[name]);
+            if (i < masterworkItems[itemName].lowestPosition) {
+                // Remove the old lowest position item
+                if (masterworkItems[itemName].lowestPosition < 9999999) {
+                    otherPositionsToRemove.push(masterworkItems[itemName].lowestPosition);
+                }
+                // Set the new lowest position
+                masterworkItems[itemName].lowestPosition = i;
+                masterworkItems[itemName].lowestPositionName = name;
+            } else {
+                otherPositionsToRemove.push(i);
+            }
+        }
+    }
+
+    // Remove all the excess items that need to be grouped up
+    otherPositionsToRemove = otherPositionsToRemove.sort((pos1, pos2) => pos2 - pos1);
+    for (const pos of otherPositionsToRemove) {
+        items.splice(pos, 1);
+    }
+
+    // Re-insert the groups as arrays into the items array, IN THE CORRECT POSITION.
+    let masterworkGroups = Object.keys(masterworkItems).sort(
+        (item1, item2) => masterworkItems[item2].lowestPosition - masterworkItems[item1].lowestPosition
+    );
+    for (const masterworkGroup of masterworkGroups) {
+        items.splice(
+            items.indexOf(masterworkItems[masterworkGroup].lowestPositionName),
+            1,
+            masterworkItems[masterworkGroup].items
+        );
+    }
+
+    return items;
+}
+
+export default function ItemsPage({ itemData }) {
+    const [relevantItems, setRelevantItems] = React.useState(() => getRelevantItems({}, itemData));
+    const [itemsToShow, setItemsToShow] = React.useState(20);
+    const itemsToLoad = 20;
+
+    function handleChange(data) {
+        setRelevantItems(getRelevantItems(data, itemData));
+        setItemsToShow(itemsToLoad);
+    }
+
+    function showMoreItems() {
+        setItemsToShow(itemsToShow + itemsToLoad);
+    }
+
+    return (
+        <HideLoreProvider>
+            <div className={styles.container}>
+                <main className={styles.main}>
+                    <h1>Monumenta Items</h1>
+                    <SearchForm update={handleChange} itemData={itemData}></SearchForm>
+                    <h4 className={styles.resultCount}>
+                        <TranslatableText identifier="items.searchForm.itemsFound"></TranslatableText>{' '}
+                        {relevantItems.length}
+                    </h4>
+                    {relevantItems.length === 0 ? (
+                        <div className={styles.emptyState}>
+                            <b>No items found.</b>
+                            <br />
+                            Try clearing some filters or searching for something else.
+                        </div>
+                    ) : (
+                        <InfiniteScroll
+                            className={styles.itemsContainer}
+                            dataLength={itemsToShow}
+                            next={showMoreItems}
+                            hasMore={true}
+                            loader={<h4>No items found</h4>}
+                        >
+                            {relevantItems.slice(0, itemsToShow).map((name) => {
+                                if (typeof name == 'object') {
+                                    return (
+                                        <MasterworkableItemTile
+                                            key={`${name[0].name}-${name[0].masterwork}`}
+                                            name={name[0].name}
+                                            item={name}
+                                        ></MasterworkableItemTile>
+                                    );
+                                }
+                                if (itemData[name].type == 'Charm') {
+                                    return (
+                                        <CharmTile
+                                            key={name}
+                                            name={itemData[name].name}
+                                            item={itemData[name]}
+                                        ></CharmTile>
+                                    );
+                                }
+                                if (itemData[name].type == 'Consumable' && itemData[name].effects != undefined) {
+                                    return (
+                                        <ConsumableTile key={name} name={name} item={itemData[name]}></ConsumableTile>
+                                    );
+                                }
+                                return <ItemTile key={name} name={name} item={itemData[name]}></ItemTile>;
+                            })}
+                        </InfiniteScroll>
+                    )}
+                </main>
+            </div>
+        </HideLoreProvider>
+    );
+}

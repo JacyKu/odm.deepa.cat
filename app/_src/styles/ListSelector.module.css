@@ -1,0 +1,72 @@
+.listSelectorContainer {
+    border-radius: 0;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: block;
+}
+
+.listSelectorInputs {
+    display: inline-flex;
+    width: 100%;
+}
+
+.listSelectorList {
+    display: flex;
+    flex-flow: row wrap;
+}
+
+.entryInput {
+    width: 85%;
+    background: var(--glass-2);
+    border: 1px solid var(--control-border);
+    border-radius: 0;
+    padding: 7px 10px;
+    color: var(--text-1);
+    font-family: monospace;
+}
+
+.entry {
+    padding-left: 2px;
+    padding-right: 2px;
+    font-weight: bold;
+    font-size: 18px;
+    display: flex;
+    flex-direction: column;
+    font-family: monospace;
+}
+
+.entry:hover {
+    text-decoration: line-through;
+    cursor: pointer;
+    color: var(--text-2);
+}
+
+.name {
+    text-align: center;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.button {
+    width: 32px;
+    font-weight: bold;
+    border: 1px solid var(--control-border);
+    border-radius: 0;
+    background: var(--glass-1);
+    color: var(--text-1);
+    transition:
+        background-color 150ms ease,
+        transform 75ms ease,
+        border-color 150ms ease;
+}
+
+.button:hover {
+    background: var(--glass-2);
+    border-color: var(--control-border-hover);
+}
+
+.button:active {
+    transform: translateY(1px);
+}

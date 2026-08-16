@@ -1,0 +1,10 @@
+node_modules/
+.next/
+*.turbo/
+npm-debug.log*
+yarn-debug.log*
+.env
+.env*.local
+data/odm-builds.db*
+.vscode/
+.idea/

@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.turbo/
+public/items/
+public/spritesheets/
+data/
+package-lock.json
+*.db
+*.db-wal
+*.db-shm
+*.pem
+*.log
+.env*

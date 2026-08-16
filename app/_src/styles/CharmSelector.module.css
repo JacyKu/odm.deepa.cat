@@ -1,0 +1,71 @@
+.listSelectorContainer {
+    border-radius: 0;
+    display: block;
+}
+
+.listSelectorInputs {
+    display: inline-flex;
+    width: 100%;
+}
+
+.listSelectorList {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: stretch;
+    justify-content: space-evenly;
+}
+
+.entryInput {
+    width: 25em;
+    background: var(--glass-2);
+    color: var(--text-1);
+}
+
+.entry {
+    padding-left: 2px;
+    padding-right: 2px;
+    display: flex;
+}
+
+.entry:hover {
+    transform: scale(1.05);
+    cursor: pointer;
+    color: var(--text-2);
+}
+
+.name {
+    text-align: center;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.button {
+    width: 38px;
+    font-weight: bold;
+    border: 1px solid var(--control-border);
+    background: var(--glass-1);
+    border-radius: 0;
+    color: var(--text-1);
+    transition:
+        background-color 150ms ease,
+        transform 75ms ease,
+        border-color 150ms ease;
+}
+
+.button:hover {
+    background: var(--glass-2);
+    border-color: var(--control-border-hover);
+}
+
+.button:active {
+    transform: translateY(1px);
+}
+
+.powerStars {
+    text-align: center;
+    font-size: 18px;
+}
+
+.activeStars {
+    color: #fcb23d;
+}

@@ -1,0 +1,1912 @@
+﻿import Select from 'react-select';
+import SelectInput from '../items/selectInput';
+import FloatingLabel from '../items/floatingLabel';
+import LoreToggle from '../items/loreToggle';
+import CheckboxWithLabel from '../items/checkboxWithLabel';
+import ItemTile from '../items/itemTile';
+import MasterworkableItemTile from '../items/masterworkableItemTile';
+import CharmTile from '../items/charmTile';
+import BuildImportBar from './buildImportBar';
+import BuilderHeader from '../items/builderHeader';
+import styles from '../../styles/Items.module.css';
+import React from 'react';
+import { getOdmBase } from '../../utils/base';
+
+import Stats from '../../utils/builder/stats';
+import TranslatableText from '../translatableText';
+import ListSelector from './listSelector';
+import CharmSelector from './charmSelector';
+import CharmShortener from '../../utils/builder/charmShortener';
+import { decodeBuildParam, encodeBuildParam, normalizeBuildParam } from '../../utils/builder/buildUrlCodec';
+
+const emptyBuild = {
+    mainhand: 'None',
+    offhand: 'None',
+    helmet: 'None',
+    chestplate: 'None',
+    leggings: 'None',
+    boots: 'None',
+};
+
+const enabledBoxes = {
+    // Situational Defense
+    shielding: false,
+    poise: false,
+    inure: false,
+    steadfast: false,
+    guard: false,
+    second_wind: false,
+    ethereal: false,
+    reflexes: false,
+    evasion: false,
+    tempo: false,
+    cloaked: false,
+    earth_aspect: false,
+
+    // Situational Damage
+    smite: false,
+    duelist: false,
+    slayer: false,
+    point_blank: false,
+    sniper: false,
+    first_strike: false,
+    regicide: false,
+    trivium: false,
+    stamina: false,
+    technique: false,
+    abyssal: false,
+    fractal: false,
+    skyseeker: false,
+    retaliation_normal: false,
+    retaliation_elite: false,
+    retaliation_boss: false,
+};
+
+const situationalDefenses = [
+    'shielding',
+    'poise',
+    'inure',
+    'steadfast',
+    'guard',
+    'second_wind',
+    'ethereal',
+    'reflexes',
+    'evasion',
+    'tempo',
+    'cloaked',
+    'earth_aspect',
+];
+
+const situationalFlatDamage = ['smite', 'duelist', 'slayer', 'point_blank', 'sniper'];
+
+const situationalPercentDamage = [
+    'first_strike',
+    'regicide',
+    'trivium',
+    'stamina',
+    'technique',
+    'abyssal',
+    'fractal',
+    'skyseeker',
+    'retaliation_normal',
+    'retaliation_elite',
+    'retaliation_boss',
+];
+
+const extraStats = {
+    damageMultipliers: [],
+    resistanceMultipliers: [],
+    healthMultipliers: [],
+    speedMultipliers: [],
+    attackSpeedMultipliers: [],
+};
+
+const itemTypes = ['mainhand', 'offhand', 'helmet', 'chestplate', 'leggings', 'boots'];
+
+const regions = [
+    { value: 1, label: 'Valley' },
+    { value: 2, label: 'Isles' },
+    { value: 3, label: 'Ring' },
+];
+
+// Extra stat inputs that are part of the build (shared in the link under their full names).
+const STAT_KEYS = ['health', 'tenacity', 'vitality', 'vigor', 'focus', 'perspicacity', 'region'];
+
+const DEFAULT_STAT_INPUTS = { health: '100', tenacity: '0', vitality: '0', vigor: '0', focus: '0', perspicacity: '0' };
+
+const classes = ['Alchemist', 'Cleric', 'Mage', 'Rogue', 'Scout', 'Shaman', 'Warlock', 'Warrior'];
+
+// API skill scoreboardIds that feed the stat calculation (the rest of the
+// skills are selected and exported, but don't change the stat cards).
+const skillBuffKeys = {
+    Celestial: 'celestial_blessing',
+    WeaponMastery: 'weapon_mastery',
+    Toughness: 'toughness',
+};
+
+// Spec skill scoreboardIds that feed the stat calculation.
+const specSkillBuffKeys = {
+    Taboo: 'taboo',
+};
+
+const MAX_ENHANCEMENT_POINTS = 3;
+const MAX_SPEC_POINTS = 4;
+const MAX_SKILL_POINTS = 12;
+
+const enabledClassAbilityBuffs = {
+    versatile: false,
+    weapon_mastery: false,
+    weapon_mastery_lv1: false,
+    weapon_mastery_lv2: false,
+    weapon_mastery_enhancement: false,
+    formidable: false,
+    dethroner_elite: false,
+    dethroner_boss: false,
+    culling: false,
+    totemic_empowerment: false,
+    taboo_lv1: false,
+    taboo_lv2: false,
+    taboo_burst: false,
+    channeling: false,
+    celestial_blessing_lv1: false,
+    celestial_blessing_lv2: false,
+    toughness_lv1: false,
+    toughness_lv2: false,
+    toughness_enhancement: false,
+};
+
+function groupMasterwork(items, itemData) {
+    // Group up masterwork tiers by their name using an object, removing them from items.
+    let masterworkItems = {};
+    // Go through the array in reverse order to have the splice work properly
+    // (items will go down in position if not removed from the end)
+    for (let i = items.length - 1; i >= 0; i--) {
+        let name = items[i];
+        if (itemData[name].masterwork != undefined) {
+            let itemName = itemData[name].name;
+            if (!masterworkItems[itemName]) {
+                masterworkItems[itemName] = [];
+            }
+            masterworkItems[itemName].push(itemData[name]);
+            items.splice(i, 1);
+        }
+    }
+
+    // Re-insert the groups as arrays into the items array.
+    Object.keys(masterworkItems).forEach((item) => {
+        items.push({ value: `${item}-${masterworkItems[item][0].masterwork}`, label: item });
+    });
+
+    return items;
+}
+
+function getRelevantItems(types, itemData) {
+    let items = Object.keys(itemData);
+    return groupMasterwork(
+        items.filter((name) => types.includes(itemData[name].type.toLowerCase().replace(/<.*>/, '').trim())),
+        itemData
+    );
+}
+
+function recalcBuild(data, itemData) {
+    let tempStats = new Stats(itemData, data, enabledBoxes, extraStats, enabledClassAbilityBuffs);
+    return tempStats;
+}
+
+function createMasterworkData(name, itemData) {
+    return Object.keys(itemData)
+        .filter((itemName) => itemData[itemName].name == name)
+        .map((itemName) => itemData[itemName]);
+}
+
+function removeMasterworkFromName(name) {
+    return name.replace(/-\d$/g, '');
+}
+
+function checkExists(type, itemsToDisplay, itemData) {
+    let retVal = false;
+    if (itemsToDisplay.itemStats) {
+        retVal = itemsToDisplay.itemStats[type] !== undefined;
+    }
+    if (
+        itemsToDisplay.itemNames &&
+        itemsToDisplay.itemNames[type] &&
+        createMasterworkData(removeMasterworkFromName(itemsToDisplay.itemNames[type]), itemData)[0]?.masterwork !=
+            undefined
+    ) {
+        retVal = true;
+    }
+    return retVal;
+}
+
+function formatSituationalName(situ) {
+    let ret = situ
+        .split('_')
+        .map((word) => word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+    if (ret.match('Retaliation')) return ret.split(' ')[0] + ' (' + ret.split(' ')[1].toLowerCase() + ')';
+    return ret;
+}
+
+function generateSituationalCheckboxes(itemsToDisplay, checkboxChanged) {
+    let tempDef = [];
+    let tempFlatDmg = [];
+    let tempPercentDmg = [];
+
+    situationalDefenses.forEach(function (situ) {
+        if (!itemsToDisplay.situationals) return;
+        if (itemsToDisplay.situationals[situ].level) {
+            tempDef.push(
+                <div className="col-auto" key={'situationalbox-' + situ}>
+                    <CheckboxWithLabel
+                        name={formatSituationalName(situ)}
+                        checked={enabledBoxes[situ]}
+                        onChange={checkboxChanged}
+                    />
+                </div>
+            );
+        }
+    });
+    situationalFlatDamage.forEach(function (situ) {
+        if (!itemsToDisplay.situationals) return;
+        if (itemsToDisplay.situationals[situ].level) {
+            tempFlatDmg.push(
+                <div className="col-auto" key={'situationalbox-' + situ}>
+                    <CheckboxWithLabel
+                        name={formatSituationalName(situ)}
+                        checked={enabledBoxes[situ]}
+                        onChange={checkboxChanged}
+                    />
+                </div>
+            );
+        }
+    });
+    situationalPercentDamage.forEach(function (situ) {
+        if (!itemsToDisplay.situationals) return;
+        if (itemsToDisplay.situationals[situ].level) {
+            tempPercentDmg.push(
+                <div className="col-auto" key={'situationalbox-' + situ}>
+                    <CheckboxWithLabel
+                        name={formatSituationalName(situ)}
+                        checked={enabledBoxes[situ]}
+                        onChange={checkboxChanged}
+                    />
+                </div>
+            );
+        }
+    });
+    if (itemsToDisplay.retaliation) {
+        ['normal', 'elite', 'boss'].forEach((type) => {
+            tempPercentDmg.push(
+                <div className="col-auto" key={'situationalbox-retaliation_' + type}>
+                    <CheckboxWithLabel
+                        name={formatSituationalName('retaliation_' + type)}
+                        checked={enabledBoxes['retaliation_' + type]}
+                        onChange={checkboxChanged}
+                    />
+                </div>
+            );
+        });
+    }
+    /* if(itemsToDisplay.meleeDamagePercent > 100 || itemsToDisplay.projectileDamagePercent > 100){
+        tempPercentDmg.push(<CheckboxWithLabel key={"situationalbox-versatile"} name="Versatile" checked={false} onChange={checkboxChanged} />)
+    } */
+
+    let temp = [];
+    temp.push(...tempDef);
+    if (tempDef.length > 0 && tempFlatDmg.length > 0) {
+        temp.push(<span key="spacer1" style={{ width: '10px', padding: '0px' }}></span>);
+        // spacer between def and flat damage if both exist
+    }
+    temp.push(...tempFlatDmg);
+    if (temp.length > 0 && tempPercentDmg.length > 0) {
+        temp.push(<span key="spacer2" style={{ width: '10px', padding: '0px' }}></span>);
+        // spacer between existing stuff and percent damage if both exist
+    }
+    temp.push(...tempPercentDmg);
+    if (temp.length == 0) {
+        temp.push(
+            <div className="col-auto" key="builder.info.noSituationals">
+                <TranslatableText
+                    className={styles.noSituationals}
+                    identifier="builder.info.noSituationals"
+                ></TranslatableText>
+            </div>
+        );
+    }
+    return temp;
+}
+
+function cleanDescription(desc) {
+    return (
+        String(desc || '')
+            // Section bullets (▶ ▪ ● • ◆ ★ ☆) become line breaks.
+            .replace(/[\u25B6\u25AA\u25CF\u2022\u25A0\u25C6\u2605\u2606]/g, '\n')
+            // Drop leftover icons and empty parens left behind by them.
+            .replace(/[\u{1F5E1}]/gu, '')
+            .replace(/\(\s*\)/g, '')
+            .split('\n')
+            .map((line) => line.replace(/^[\u25C6\u00B7\u2013\u2014\s]+/, '').trim())
+            .filter(Boolean)
+            .join('\n')
+    );
+}
+
+export default function BuildForm({
+    update,
+    build,
+    parentLoaded,
+    itemData,
+    itemsToDisplay,
+    buildName,
+    setBuildName,
+    updateLink,
+    setUpdateLink,
+}) {
+    const [stats, setStats] = React.useState({});
+    const [charms, setCharms] = React.useState([]);
+    const [gameClass, setGameClass] = React.useState('none'); // "class" is a reserved word
+    const [skillsData, setSkillsData] = React.useState(null);
+    const [skillPoints, setSkillPoints] = React.useState({});
+    const [classSelectKey, setClassSelectKey] = React.useState(0);
+    const [saveState, setSaveState] = React.useState(null); // 'saving' | 'copied' | 'error'
+    const [resetConfirm, setResetConfirm] = React.useState(false);
+    const resetTimeoutRef = React.useRef(null);
+    const [statInputs, setStatInputs] = React.useState(DEFAULT_STAT_INPUTS);
+    const [regionValue, setRegionValue] = React.useState(3);
+    const [regionSelectKey, setRegionSelectKey] = React.useState(0);
+    const [enhancements, setEnhancements] = React.useState({}); // buff key -> true
+    const [spec, setSpec] = React.useState(null); // specialization name
+    const [specSelectKey, setSpecSelectKey] = React.useState(0);
+    const [specSkillPoints, setSpecSkillPoints] = React.useState({});
+
+    function statInputChanged(name, event) {
+        const next = { ...statInputs, [name]: event.target.value };
+        setStatInputs(next);
+        recalcAndSyncUrl();
+    }
+
+    function regionChanged(newValue) {
+        setRegionValue(Number(newValue.value));
+        recalcAndSyncUrl();
+    }
+
+    React.useEffect(() => {
+        return () => {
+            if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+        };
+    }, []);
+
+    function handleResetClick() {
+        if (!resetConfirm) {
+            setResetConfirm(true);
+            if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+            resetTimeoutRef.current = setTimeout(() => setResetConfirm(false), 2500);
+            return;
+        }
+        if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+        setResetConfirm(false);
+        resetForm();
+    }
+
+    const currentClassSkills = (() => {
+        if (!skillsData || !Array.isArray(skillsData.classes) || gameClass == 'none') return [];
+        const cls = skillsData.classes.find((c) => (c.className || '').toLowerCase() == gameClass);
+        return cls ? cls.skills || [] : [];
+    })();
+
+    const currentSpecOptions = (() => {
+        if (!skillsData || !Array.isArray(skillsData.classes) || gameClass == 'none') return [];
+        const cls = skillsData.classes.find((c) => (c.className || '').toLowerCase() == gameClass);
+        return (cls?.specs || []).map((s) => ({ value: s.specName, label: s.specName }));
+    })();
+
+    const currentSpecSkills = (() => {
+        if (!skillsData || !Array.isArray(skillsData.classes) || gameClass == 'none' || !spec) return [];
+        const cls = skillsData.classes.find((c) => (c.className || '').toLowerCase() == gameClass);
+        const specData = cls?.specs?.find((s) => s.specName == spec);
+        return specData ? specData.specSkills || [] : [];
+    })();
+
+    // Rebuild the class-ability buff flags from skill points, spec skill
+    // points, and the enhancement checkboxes. The stat engine reads these.
+    function refreshClassBuffs(nextSkillPoints, nextSpecPoints, nextEnhancements) {
+        Object.keys(enabledClassAbilityBuffs).forEach((key) => {
+            enabledClassAbilityBuffs[key] = false;
+        });
+        for (const [id, pts] of Object.entries(nextSkillPoints)) {
+            const buffKey = skillBuffKeys[id];
+            if (!buffKey) continue;
+            enabledClassAbilityBuffs[buffKey] = pts >= 1;
+            enabledClassAbilityBuffs[`${buffKey}_lv1`] = pts >= 1;
+            enabledClassAbilityBuffs[`${buffKey}_lv2`] = pts >= 2;
+        }
+        for (const [id, pts] of Object.entries(nextSpecPoints)) {
+            const buffKey = specSkillBuffKeys[id];
+            if (!buffKey) continue;
+            enabledClassAbilityBuffs[`${buffKey}_lv1`] = pts >= 1;
+            enabledClassAbilityBuffs[`${buffKey}_lv2`] = pts >= 2;
+            enabledClassAbilityBuffs[`${buffKey}_burst`] = pts >= 3;
+        }
+        for (const skillId of Object.keys(nextEnhancements)) {
+            const buffKey = skillBuffKeys[skillId];
+            if (!buffKey) continue;
+            if ((nextSkillPoints[skillId] || 0) >= 1) {
+                enabledClassAbilityBuffs[`${buffKey}_enhancement`] = true;
+            }
+        }
+    }
+
+    // Update the address bar without navigating: navigating to a new
+    // /builder/<token> path re-fetches the route and remounts the page,
+    // which would wipe all form state on every change.
+    function syncUrl(path) {
+        window.history.replaceState(null, '', path);
+    }
+
+    function recalcAndSyncUrl(skillsOverride, enhancementsOverride) {
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(
+            null,
+            null,
+            null,
+            skillsOverride,
+            enhancementsOverride ? { enhancements: enhancementsOverride } : null
+        );
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    function skillPointClicked(skillId, pointIndex) {
+        const current = skillPoints[skillId] || 0;
+        const want = pointIndex + 1;
+        const next = current === want ? pointIndex : want;
+        const nextPoints = { ...skillPoints, [skillId]: next };
+        if (next === 0) delete nextPoints[skillId];
+        setSkillPoints(nextPoints);
+        // Enhancements require at least one point in the skill.
+        let nextEnhancements = enhancements;
+        if (next === 0 && enhancements[skillId]) {
+            nextEnhancements = { ...enhancements };
+            delete nextEnhancements[skillId];
+            setEnhancements(nextEnhancements);
+        }
+        refreshClassBuffs(nextPoints, specSkillPoints, nextEnhancements);
+        recalcAndSyncUrl(
+            Object.entries(nextPoints).filter(([, pts]) => pts > 0),
+            nextEnhancements
+        );
+    }
+
+    function specSkillPointClicked(skillId, pointIndex) {
+        const current = specSkillPoints[skillId] || 0;
+        const want = pointIndex + 1;
+        const next = current === want ? pointIndex : want;
+        const nextPoints = { ...specSkillPoints, [skillId]: next };
+        if (next === 0) delete nextPoints[skillId];
+        setSpecSkillPoints(nextPoints);
+        refreshClassBuffs(skillPoints, nextPoints, enhancements);
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(null, null, null, null, { specSkills: nextPoints });
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    function setAllSkillPoints(points) {
+        const next = {};
+        let nextEnhancements = enhancements;
+        if (!points) {
+            nextEnhancements = {};
+        }
+        currentClassSkills.forEach((skill) => {
+            const maxPoints = Math.max(0, (skill.descriptions || []).length - 1);
+            if (points && maxPoints > 0) next[skill.scoreboardId] = maxPoints;
+        });
+        setSkillPoints(next);
+        if (!points) setEnhancements({});
+        refreshClassBuffs(next, specSkillPoints, nextEnhancements);
+        recalcAndSyncUrl(
+            Object.entries(next).filter(([, pts]) => pts > 0),
+            nextEnhancements
+        );
+    }
+
+    function enhancementToggled(skillId, checked) {
+        // Enhancing a skill requires at least one point in it.
+        if (checked && (skillPoints[skillId] || 0) < 1) return;
+        const next = { ...enhancements };
+        if (checked) next[skillId] = true;
+        else delete next[skillId];
+        setEnhancements(next);
+        refreshClassBuffs(skillPoints, specSkillPoints, next);
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(null, null, null, null, { enhancements: next });
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    function specChanged(newValue, actionMeta) {
+        const specName = newValue ? newValue.value : null;
+        setSpec(specName);
+        setSpecSelectKey((k) => k + 1);
+        setSpecSkillPoints({});
+        refreshClassBuffs(skillPoints, {}, enhancements);
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(null, null, null, null, { spec: specName, specSkills: {} });
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    function saveBuildToServer() {
+        const token = makeBuildString();
+        const path = window.location.pathname;
+
+        // Already on the short-link page with no edits: reuse the existing short link, no DB write.
+        if (path.startsWith(getOdmBase() + '/b/')) {
+            setSaveState('copied');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(window.location.href).catch(() => {});
+            }
+            setTimeout(() => setSaveState(null), 2000);
+            return;
+        }
+
+        setSaveState('saving');
+        fetch('/api/v1/builds', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((d) => {
+                const link = window.location.origin + getOdmBase() + '/b/' + d.id;
+                // Move onto the short link so an unedited reload reuses it instead of re-saving.
+                syncUrl(getOdmBase() + '/b/' + d.id);
+                setSaveState('copied');
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(link).catch(() => {});
+                }
+                setTimeout(() => setSaveState(null), 2000);
+            })
+            .catch(() => setSaveState('error'));
+    }
+
+    React.useEffect(() => {
+        fetch('/api/v1/skills')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d && Array.isArray(d.classes)) setSkillsData(d);
+            })
+            .catch(() => {});
+    }, []);
+
+    function sendUpdate(event) {
+        event.preventDefault();
+        const itemNames = Object.fromEntries(new FormData(event.target).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString();
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    React.useEffect(() => {
+        if (parentLoaded && build) {
+            const decoded = decodeBuildParam(build, itemData);
+            if (!decoded) return;
+            let buildParts = decodeURI(decoded).split('&');
+            let itemNames = {
+                mainhand: buildParts.find((str) => str.includes('m='))?.split('m=')[1],
+                offhand: buildParts.find((str) => str.includes('o='))?.split('o=')[1],
+                helmet: buildParts.find((str) => str.includes('h='))?.split('h=')[1],
+                chestplate: buildParts.find((str) => str.includes('c='))?.split('c=')[1],
+                leggings: buildParts.find((str) => str.includes('l='))?.split('l=')[1],
+                boots: buildParts.find((str) => str.includes('b='))?.split('b=')[1],
+            };
+            Object.keys(itemNames).forEach((type) => {
+                if (itemNames[type] === undefined || !Object.keys(itemData).includes(itemNames[type])) {
+                    itemNames[type] = 'None';
+                }
+            });
+            let charmString = buildParts.find((str) => str.includes('charm='));
+            if (charmString) {
+                // decodeURIComponent: decodeURI leaves %2C (comma) encoded since it's a reserved char
+                let charmList = CharmShortener.parseCharmData(
+                    decodeURIComponent(charmString.split('charm=')[1]),
+                    itemData
+                );
+
+                // Cap the restored list to the 12-power charm limit.
+                let cappedList = [];
+                let powerCount = 0;
+                charmList.forEach((name) => {
+                    if (powerCount + (itemData[name]?.power || 0) <= 12) {
+                        powerCount += itemData[name]?.power || 0;
+                        cappedList.push(name);
+                    }
+                });
+
+                // dunno what happened here but i needed to change this to have the map()
+                // so it's passing a list of charm objects, not charm names
+                // idk why it worked before and stopped working now, but this fixes it
+                setCharms(cappedList.map((name) => itemData[name]));
+            }
+
+            // class + skill points from the URL
+            let classPart = buildParts.find((str) => str.includes('cl='));
+            if (classPart) {
+                const cls = classPart.split('cl=')[1];
+                if (cls) {
+                    setGameClass(cls.toLowerCase());
+                    setClassSelectKey((k) => k + 1);
+                }
+            }
+            let skPart = buildParts.find((str) => str.includes('sk='));
+            let loadedSkillPoints = {};
+            if (skPart) {
+                const nextPoints = {};
+                decodeURIComponent(skPart.split('sk=')[1])
+                    .split(',')
+                    .forEach((part) => {
+                        const [id, pts] = part.split(':');
+                        const points = Number(pts);
+                        if (id && Number.isInteger(points) && points > 0) nextPoints[id] = points;
+                    });
+                loadedSkillPoints = nextPoints;
+                setSkillPoints(nextPoints);
+            }
+            let spPart = buildParts.find((str) => str.includes('sp='));
+            if (spPart) {
+                const specName = decodeURIComponent(spPart.split('sp=')[1]);
+                if (specName) {
+                    setSpec(specName);
+                    setSpecSelectKey((k) => k + 1);
+                }
+            }
+            let sskPart = buildParts.find((str) => str.includes('ssk='));
+            let loadedSpecPoints = {};
+            if (sskPart) {
+                const nextPoints = {};
+                decodeURIComponent(sskPart.split('ssk=')[1])
+                    .split(',')
+                    .forEach((part) => {
+                        const [id, pts] = part.split(':');
+                        const points = Number(pts);
+                        if (id && Number.isInteger(points) && points > 0) nextPoints[id] = points;
+                    });
+                loadedSpecPoints = nextPoints;
+                setSpecSkillPoints(nextPoints);
+            }
+            let enPart = buildParts.find((str) => str.includes('en='));
+            let loadedEnhancements = {};
+            if (enPart) {
+                const nextEnhancements = {};
+                decodeURIComponent(enPart.split('en=')[1])
+                    .split(',')
+                    .forEach((key) => {
+                        if (key) nextEnhancements[key] = true;
+                    });
+                loadedEnhancements = nextEnhancements;
+                setEnhancements(nextEnhancements);
+            }
+            refreshClassBuffs(loadedSkillPoints, loadedSpecPoints, loadedEnhancements);
+            // extra stat inputs (health/tenacity/vitality/vigor/focus/perspicacity/region)
+            const statValues = {};
+            for (const key of STAT_KEYS) {
+                const part = buildParts.find((str) => str.startsWith(`${key}=`));
+                if (part) statValues[key] = part.split('=')[1];
+            }
+            if (Object.keys(statValues).length > 0) {
+                setStatInputs((prev) => ({ ...DEFAULT_STAT_INPUTS, ...statValues }));
+                if (statValues.region !== undefined) {
+                    const regionNum = Number(statValues.region);
+                    if ([1, 2, 3].includes(regionNum)) {
+                        setRegionValue(regionNum);
+                        setRegionSelectKey((k) => k + 1);
+                    }
+                }
+            }
+
+            const tempStats = recalcBuild({ ...itemNames, ...statValues }, itemData);
+            setStats(tempStats);
+            update(tempStats);
+        }
+    }, [parentLoaded]);
+
+    const formRef = React.useRef();
+    const itemRefs = {
+        mainhand: React.useRef(),
+        offhand: React.useRef(),
+        helmet: React.useRef(),
+        chestplate: React.useRef(),
+        leggings: React.useRef(),
+        boots: React.useRef(),
+    };
+
+    function resetForm(event) {
+        for (let ref in itemRefs) {
+            itemRefs[ref].current.setValue({ value: 'None', label: 'None' });
+        }
+        setGameClass('none');
+        setClassSelectKey((k) => k + 1);
+        setSkillPoints({});
+        setSpec(null);
+        setSpecSelectKey((k) => k + 1);
+        setSpecSkillPoints({});
+        setEnhancements({});
+        refreshClassBuffs({}, {}, {});
+        setStatInputs(DEFAULT_STAT_INPUTS);
+        setRegionValue(3);
+        setRegionSelectKey((k) => k + 1);
+        const tempStats = recalcBuild(emptyBuild, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        syncUrl(getOdmBase() + '/builder');
+    }
+
+    function receiveMasterworkUpdate(newActiveItem, itemType) {
+        let newBuild = {};
+        for (let ref in itemRefs) {
+            newBuild[ref] = itemRefs[ref].current.getValue()[0].value;
+        }
+        let mainhands = [
+            'mainhand',
+            'mainhand sword',
+            'mainhand shield',
+            'axe',
+            'pickaxe',
+            'wand',
+            'scythe',
+            'bow',
+            'crossbow',
+            'snowball',
+            'trident',
+            'alchemist bag',
+        ];
+        let offhands = ['offhand', 'offhand shield', 'offhand sword'];
+        let actualItemType = mainhands.includes(itemType.toLowerCase())
+            ? 'mainhand'
+            : offhands.includes(itemType.toLowerCase())
+              ? 'offhand'
+              : itemType.toLowerCase();
+
+        newBuild[actualItemType.toLowerCase()] = `${newActiveItem.name}-${newActiveItem.masterwork}`;
+        itemRefs[actualItemType.toLowerCase()].current.setValue({
+            value: `${newActiveItem.name}-${newActiveItem.masterwork}`,
+            label: newActiveItem.name,
+        });
+        const token = makeBuildString(null, Object.entries(newBuild));
+        syncUrl(getOdmBase() + '/builder/' + token);
+
+        const tempStats = recalcBuild(newBuild, itemData);
+        setStats(tempStats);
+        update(tempStats);
+    }
+
+    function copyBuild(event) {
+        let baseUrl = `${window.location.origin}${getOdmBase()}/builder/`;
+        event.target.value = 'Copied!';
+        event.target.classList.add('fw-bold');
+        setTimeout(() => {
+            event.target.value = 'Share';
+            event.target.classList.remove('fw-bold');
+        }, 3000);
+
+        if (!navigator.clipboard) {
+            window.alert("Couldn't copy build to clipboard. Sadness. :(");
+            return;
+        }
+        navigator.clipboard.writeText(`${baseUrl}${makeBuildString()}`).then(
+            function () {
+                console.log('Copying to clipboard was successful!');
+            },
+            function (err) {
+                console.error('Could not copy text: ', err);
+            }
+        );
+    }
+
+    function copyBuildDiscord(event) {
+        let baseUrl = `${window.location.origin}${getOdmBase()}/builder/`;
+        event.target.value = 'Copied!';
+        event.target.classList.add('fw-bold');
+        setTimeout(() => {
+            event.target.value = 'Copy link for Discord';
+            event.target.classList.remove('fw-bold');
+        }, 3000);
+        let tempBuildName = buildName ? buildName : 'Monumenta Builder';
+
+        if (!navigator.clipboard) {
+            window.alert("Couldn't copy build to clipboard. Sadness. :(");
+            return;
+        }
+        navigator.clipboard.writeText(`[${tempBuildName}](${baseUrl}${makeBuildString()})`).then(
+            function () {
+                console.log('Copying to clipboard was successful!');
+            },
+            function (err) {
+                console.error('Could not copy text: ', err);
+            }
+        );
+    }
+
+    function getEquipName(type) {
+        const decoded = decodeBuildParam(build, itemData);
+        if (!decoded) return undefined;
+        let buildParts = decodeURI(decoded).split('&');
+        let allowedTypes = ['mainhand', 'offhand', 'helmet', 'chestplate', 'leggings', 'boots'];
+        let name = allowedTypes.includes(type)
+            ? buildParts.find((str) => str.includes(`${type[0]}=`))?.split(`${type[0]}=`)[1]
+            : 'None';
+        if (!Object.keys(itemData).includes(name)) {
+            return { value: 'None', label: 'None' };
+        }
+        return { value: name, label: removeMasterworkFromName(name) };
+    }
+
+    function makeBuildString(charmsOverride, dataOverride, classOverride, skillsOverride, stateOverride) {
+        const keysToShare = ['mainhand', 'offhand', 'helmet', 'chestplate', 'leggings', 'boots'];
+
+        let entries;
+        if (dataOverride) {
+            if (typeof dataOverride[Symbol.iterator] === 'function') {
+                entries = Array.from(dataOverride);
+            } else {
+                entries = Object.entries(dataOverride);
+            }
+        } else {
+            entries = Array.from(new FormData(formRef.current).entries());
+        }
+
+        let legacy = '';
+        for (const [key, value] of entries) {
+            if (!keysToShare.includes(key)) continue;
+            legacy += `${key[0]}=${encodeURIComponent(String(value))}&`;
+        }
+        for (const key of STAT_KEYS) {
+            const entry = entries.find(([k]) => k === key);
+            if (entry) legacy += `${key}=${encodeURIComponent(String(entry[1]))}&`;
+        }
+
+        const charmsToLookAt = charmsOverride ? charmsOverride : charms;
+        if (!charmsToLookAt || charmsToLookAt.length === 0) {
+            legacy += 'charm=None';
+        } else {
+            legacy += `charm=${encodeURIComponent(CharmShortener.shortenCharmList(charmsToLookAt))}`;
+        }
+
+        if (buildName != 'Monumenta Builder') {
+            legacy += `&name=${encodeURIComponent(buildName)}`;
+        }
+
+        const classForUrl = classOverride ?? gameClass;
+        if (classForUrl != 'none') {
+            const cls = classForUrl.charAt(0).toUpperCase() + classForUrl.slice(1);
+            legacy += `&cl=${encodeURIComponent(cls)}`;
+        }
+
+        const skillsForUrl = skillsOverride ?? Object.entries(skillPoints).filter(([, pts]) => pts > 0);
+        if (skillsForUrl.length > 0) {
+            legacy += `&sk=${skillsForUrl.map(([id, pts]) => `${id}:${pts}`).join(',')}`;
+        }
+
+        if (gameClass != 'none') {
+            const specForUrl = stateOverride?.spec !== undefined ? stateOverride.spec : spec;
+            if (specForUrl) {
+                legacy += `&sp=${encodeURIComponent(specForUrl)}`;
+            }
+            const specSkillsForUrl = stateOverride?.specSkills
+                ? Object.entries(stateOverride.specSkills).filter(([, pts]) => pts > 0)
+                : Object.entries(specSkillPoints).filter(([, pts]) => pts > 0);
+            if (specSkillsForUrl.length > 0) {
+                legacy += `&ssk=${specSkillsForUrl.map(([id, pts]) => `${id}:${pts}`).join(',')}`;
+            }
+        }
+
+        const enForUrl = stateOverride?.enhancements
+            ? Object.keys(stateOverride.enhancements)
+            : Object.keys(enhancements);
+        if (enForUrl.length > 0) {
+            legacy += `&en=${enForUrl.join(',')}`;
+        }
+
+        return encodeBuildParam(legacy);
+    }
+
+    function checkboxChanged(event) {
+        const name = event.target.name.replace(' ', '_').replace(/[()]/g, ''); // replace spaces so we can still have them visually without breaking existing stuff
+        enabledBoxes[name] = event.target.checked;
+        let temp = event.target.checked;
+        const retaliationtypes = ['retaliation_normal', 'retaliation_elite', 'retaliation_boss'];
+        if (retaliationtypes.includes(name)) {
+            retaliationtypes.forEach((type) => {
+                enabledBoxes[type] = false;
+                setCheckboxChecked(event.target.form, type.split('_')[0] + ' (' + type.split('_')[1] + ')', false);
+            });
+            enabledBoxes[name] = temp;
+            event.target.checked = temp;
+        }
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+    }
+
+    function getCheckboxRef(form, name) {
+        return form[Object.keys(form).find((key) => form[key].type == 'checkbox' && form[key].name == name)];
+    }
+
+    function setCheckboxChecked(form, name, checked) {
+        getCheckboxRef(form, name).checked = checked;
+    }
+
+    function multipliersChanged(newMultipliers, name) {
+        extraStats[name] = newMultipliers;
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+    }
+
+    function damageMultipliersChanged(newMultipliers) {
+        multipliersChanged(newMultipliers, 'damageMultipliers');
+    }
+
+    function resistanceMultipliersChanged(newMultipliers) {
+        multipliersChanged(newMultipliers, 'resistanceMultipliers');
+    }
+
+    function healthMultipliersChanged(newMultipliers) {
+        multipliersChanged(newMultipliers, 'healthMultipliers');
+    }
+
+    function speedMultipliersChanged(newMultipliers) {
+        multipliersChanged(newMultipliers, 'speedMultipliers');
+    }
+    function attackSpeedMultipliersChanged(newMultipliers) {
+        multipliersChanged(newMultipliers, 'attackSpeedMultipliers');
+    }
+
+    function updateCharms(charmNames) {
+        let charmData = charmNames.map((name) => itemData[name]);
+        setCharms(charmData);
+        const token = makeBuildString(charmData);
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    function removeCharm(charm) {
+        updateCharms(charms.filter((c) => c.name !== charm.name).map((c) => c.name));
+    }
+
+    function itemChanged(newValue, actionMeta) {
+        // This is here so you don't have to scroll down to "Recalculate" and then back up to click a situational.
+        // It updates the whole form. I don't think this was the original intent but checkboxes do anyway
+        // so may as well. However, it's kind of awkward because the FormData.entries() does not yet contain
+        // the new value of the item that was just changed, so we have to get it ourselves.
+        // Unlike most event handler props, Select's `onChange` does not pass an event.
+        // It instead passes the new value of the Select, and an "action meta" containing the checkbox name (and other stuff).
+        // Why is this not condensed into an event containing both of these and a ref to the target? Beats me. -LC
+        let entries = Array.from(new FormData(formRef.current).entries());
+        for (let i = 0; i < entries.length; i++) {
+            if (entries[i][0] == actionMeta.name) entries[i][1] = newValue.value;
+        }
+        const itemNames = Object.fromEntries(entries);
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(null, entries);
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    function classChanged(newValue, actionMeta) {
+        // no need to check actionmeta because theres only one class dropdown
+        let newClass = newValue.value.toLowerCase();
+        setGameClass(newClass);
+        setSkillPoints({});
+        setSpec(null);
+        setSpecSelectKey((k) => k + 1);
+        setSpecSkillPoints({});
+        setEnhancements({});
+        refreshClassBuffs({}, {}, {});
+        // and then recalculate... zzz
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(null, null, newClass, [], { spec: null, specSkills: {}, enhancements: {} });
+        syncUrl(getOdmBase() + '/builder/' + token);
+    }
+
+    const miscStats = [
+        { type: 'armor', name: 'builder.stats.misc.armor', percent: false },
+        { type: 'agility', name: 'builder.stats.misc.agility', percent: false },
+        { type: 'speedPercent', name: 'builder.stats.misc.speed', percent: true },
+        { type: 'knockbackRes', name: 'builder.stats.misc.kbResistance', percent: true },
+        { type: 'thorns', name: 'builder.stats.misc.thorns', percent: false },
+        { type: 'fireTickDamage', name: 'builder.stats.misc.fireTickDamage', percent: false },
+    ];
+    const healthStats = [
+        { type: 'healthFinal', name: 'builder.stats.health.healthFinal', percent: false },
+        { type: 'currentHealth', name: 'builder.stats.health.currentHealth', percent: false },
+        { type: 'healingRate', name: 'builder.stats.health.healingRate', percent: true },
+        { type: 'effHealingRate', name: 'builder.stats.health.effectiveHealingRate', percent: true },
+        { type: 'regenPerSec', name: 'builder.stats.health.regenPerSecond', percent: false },
+        { type: 'regenPerSecPercent', name: 'builder.stats.health.regenPerSecondPercent', percent: true },
+        { type: 'lifeDrainOnCrit', name: 'builder.stats.health.lifeDrainOnCrit', percent: false },
+        { type: 'lifeDrainOnCritPercent', name: 'builder.stats.health.lifeDrainOnCritPercent', percent: true },
+    ];
+    const DRStats = [
+        { type: 'meleeDR', name: 'builder.stats.dr-ehp.melee', percent: true },
+        { type: 'projectileDR', name: 'builder.stats.dr-ehp.projectile', percent: true },
+        { type: 'magicDR', name: 'builder.stats.dr-ehp.magic', percent: true },
+        { type: 'blastDR', name: 'builder.stats.dr-ehp.blast', percent: true },
+        { type: 'fireDR', name: 'builder.stats.dr-ehp.fire', percent: true },
+        { type: 'fallDR', name: 'builder.stats.dr-ehp.fall', percent: true },
+        { type: 'ailmentDR', name: 'builder.stats.dr-ehp.ailment', percent: true },
+    ];
+    const healthNormalizedDRStats = [
+        { type: 'meleeHNDR', name: 'builder.stats.dr-ehp.melee', percent: true },
+        { type: 'projectileHNDR', name: 'builder.stats.dr-ehp.projectile', percent: true },
+        { type: 'magicHNDR', name: 'builder.stats.dr-ehp.magic', percent: true },
+        { type: 'blastHNDR', name: 'builder.stats.dr-ehp.blast', percent: true },
+        { type: 'fireHNDR', name: 'builder.stats.dr-ehp.fire', percent: true },
+        { type: 'fallHNDR', name: 'builder.stats.dr-ehp.fall', percent: true },
+        { type: 'ailmentHNDR', name: 'builder.stats.dr-ehp.ailment', percent: true },
+    ];
+    const EHPStats = [
+        { type: 'meleeEHP', name: 'builder.stats.dr-ehp.melee', percent: false },
+        { type: 'projectileEHP', name: 'builder.stats.dr-ehp.projectile', percent: false },
+        { type: 'magicEHP', name: 'builder.stats.dr-ehp.magic', percent: false },
+        { type: 'blastEHP', name: 'builder.stats.dr-ehp.blast', percent: false },
+        { type: 'fireEHP', name: 'builder.stats.dr-ehp.fire', percent: false },
+        { type: 'fallEHP', name: 'builder.stats.dr-ehp.fall', percent: false },
+        { type: 'ailmentEHP', name: 'builder.stats.dr-ehp.ailment', percent: false },
+    ];
+    const meleeStats = [
+        { type: 'attackSpeedPercent', name: 'builder.stats.melee.attackSpeedPercent', percent: true },
+        { type: 'attackSpeed', name: 'builder.stats.melee.attackSpeed', percent: false },
+        { type: 'attackDamagePercent', name: 'builder.stats.melee.attackDamagePercent', percent: true },
+        { type: 'classAttackDamagePercent', name: 'builder.stats.melee.classAttackDamagePercent', percent: true },
+        { type: 'attackDamage', name: 'builder.stats.melee.attackDamage', percent: false },
+        { type: 'attackDamageCrit', name: 'builder.stats.melee.attackDamageCrit', percent: false },
+        { type: 'iframeDPS', name: 'builder.stats.melee.iframeDps', percent: false },
+        { type: 'iframeCritDPS', name: 'builder.stats.melee.iframeCritDps', percent: false },
+        { type: 'critSpamDPS', name: 'builder.stats.melee.critSpamDPS', percent: false },
+    ];
+    const projectileStats = [
+        { type: 'projectileDamagePercent', name: 'builder.stats.projectile.projectileDamagePercent', percent: true },
+        {
+            type: 'classProjectileDamagePercent',
+            name: 'builder.stats.projectile.classProjectileDamagePercent',
+            percent: true,
+        },
+        { type: 'projectileDamage', name: 'builder.stats.projectile.projectileDamage', percent: false },
+        { type: 'projectileSpeedPercent', name: 'builder.stats.projectile.projectileSpeedPercent', percent: true },
+        { type: 'projectileSpeed', name: 'builder.stats.projectile.projectileSpeed', percent: false },
+        { type: 'throwRatePercent', name: 'builder.stats.projectile.throwRatePercent', percent: true },
+        { type: 'throwRate', name: 'builder.stats.projectile.throwRate', percent: false },
+    ];
+    const magicStats = [
+        { type: 'magicDamagePercent', name: 'builder.stats.magic.magicDamagePercent', percent: true },
+        { type: 'classMagicDamagePercent', name: 'builder.stats.magic.classMagicDamagePercent', percent: true },
+        // { type: "spellPowerPercent", name: "builder.stats.magic.spellPowerPercent", percent: true },
+        // technically for consistency having this ^ line here doesn't make sense because it's like if
+        // melee stats listed "weapon base attack damage" as a line
+        // but i might re add it anyway if people don't like it being removed
+
+        // one of these two gets hidden later depending on if potion damage exists
+        // spell is only for wands, potion is only for alch bags
+        { type: 'spellDamage', name: 'builder.stats.magic.spellDamage', percent: true },
+        { type: 'potionDamage', name: 'builder.stats.magic.potionDamage', percent: false },
+        { type: 'spellCooldownPercent', name: 'builder.stats.magic.spellCooldownPercent', percent: true },
+    ];
+
+    if (updateLink) {
+        // awkward signal thing to update the link from the builderheader to get the name properly fixed up
+        // don't need to worry about updating the build string since it auto updates on dropdown change now
+        const token = makeBuildString();
+        syncUrl(getOdmBase() + '/builder/' + token);
+        setUpdateLink(false);
+    }
+
+    return (
+        <form ref={formRef} onSubmit={sendUpdate} onReset={resetForm} id="buildForm">
+            {/* Top row: region/class/spec on the left, title centered, import on the right */}
+            <div
+                style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '10px' }}
+                className="mt-3 mb-1"
+            >
+                <div className="d-flex flex-wrap align-items-center">
+                    <div className="me-3">
+                        <FloatingLabel label="Region">
+                            <Select
+                                instanceId="this-is-just-here-so-react-doesnt-yell-at-me"
+                                id="region"
+                                name="region"
+                                key={`region-${regionSelectKey}`}
+                                options={regions}
+                                defaultValue={regions.find((r) => r.value === regionValue)}
+                                menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                                menuPosition="fixed"
+                                theme={(theme) => ({
+                                    ...theme,
+                                    borderRadius: 0,
+                                    colors: {
+                                        ...theme.colors,
+                                        primary: 'var(--text-1)',
+                                        primary25: 'var(--surface-2)',
+                                        neutral0: 'var(--glass-1)',
+                                        neutral5: 'var(--glass-2)',
+                                        neutral10: 'var(--glass-2)',
+                                        neutral20: 'var(--control-border)',
+                                        neutral30: 'var(--control-border-hover)',
+                                        neutral60: 'var(--text-2)',
+                                        neutral80: 'var(--text-1)',
+                                    },
+                                })}
+                                styles={{
+                                    container: (base) => ({ ...base, width: '100%', minWidth: 150 }),
+                                    control: (base) => ({ ...base, minHeight: 42, height: 42 }),
+                                    valueContainer: (base) => ({
+                                        ...base,
+                                        height: 42,
+                                        paddingTop: 0,
+                                        paddingBottom: 0,
+                                    }),
+                                    indicatorsContainer: (base) => ({ ...base, height: 42 }),
+                                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                    menu: (base) => ({ ...base, zIndex: 9999 }),
+                                }}
+                                onChange={regionChanged}
+                            />
+                        </FloatingLabel>
+                    </div>
+                    <div>
+                        <SelectInput
+                            key={`class-${classSelectKey}`}
+                            name="class"
+                            floatingLabel="Class"
+                            noneOption={true}
+                            sortableStats={classes}
+                            default={
+                                gameClass != 'none'
+                                    ? {
+                                          value: gameClass.charAt(0).toUpperCase() + gameClass.slice(1),
+                                          label: gameClass.charAt(0).toUpperCase() + gameClass.slice(1),
+                                      }
+                                    : undefined
+                            }
+                            onChange={classChanged}
+                        />
+                    </div>
+                    {gameClass == 'none' ? (
+                        ''
+                    ) : (
+                        <div className="ms-3">
+                            <SelectInput
+                                key={`spec-${specSelectKey}`}
+                                name="spec"
+                                floatingLabel="Specialization"
+                                noneOption={true}
+                                sortableStats={currentSpecOptions}
+                                default={spec ? { value: spec, label: spec } : undefined}
+                                onChange={specChanged}
+                            />
+                        </div>
+                    )}
+                </div>
+                <BuilderHeader
+                    text={buildName}
+                    setText={setBuildName}
+                    parentLoaded={parentLoaded}
+                    build={build}
+                    setUpdateLink={setUpdateLink}
+                />
+                <div style={{ justifySelf: 'end', width: 'min(400px, 100%)' }}>
+                    <BuildImportBar embedded />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                        <LoreToggle />
+                    </div>
+                </div>
+            </div>
+
+            {gameClass == 'none' ? (
+                ''
+            ) : (
+                <div className="row justify-content-center pt-1 mb-1">
+                    <div className="col-12">
+                        <div className={styles.skillsSection}>
+                            <div className={styles.skillsHeader}>
+                                <span className={styles.skillsTitle}>Skills</span>
+                                <span className={styles.skillTotal}>
+                                    {Object.values(skillPoints).reduce((sum, pts) => sum + pts, 0)} / {MAX_SKILL_POINTS}{' '}
+                                    skill points spent
+                                </span>
+                                <span className={styles.skillTotal}>
+                                    {Object.keys(enhancements).length} / {MAX_ENHANCEMENT_POINTS} enhancement points
+                                    used
+                                </span>
+                                {Object.values(skillPoints).reduce((sum, pts) => sum + pts, 0) > MAX_SKILL_POINTS && (
+                                    <span className="text-danger fw-bold">
+                                        More than {MAX_SKILL_POINTS} skill points!
+                                    </span>
+                                )}
+                                {Object.keys(enhancements).length > MAX_ENHANCEMENT_POINTS && (
+                                    <span className="text-danger fw-bold">
+                                        More than {MAX_ENHANCEMENT_POINTS} enhancement points!
+                                    </span>
+                                )}
+                                <button
+                                    type="button"
+                                    className={styles.skillActionButton}
+                                    onClick={() => setAllSkillPoints(false)}
+                                >
+                                    Clear all
+                                </button>
+                            </div>
+                            {!skillsData ? (
+                                <div className={styles.skillsLoading}>Loading skills...</div>
+                            ) : (
+                                <div className={styles.skillsGrid}>
+                                    {currentClassSkills.map((skill) => {
+                                        const maxPoints = Math.max(0, (skill.descriptions || []).length - 1);
+                                        if (maxPoints === 0) return '';
+                                        const points = skillPoints[skill.scoreboardId] || 0;
+                                        const enhanced = Boolean(enhancements[skill.scoreboardId]);
+                                        const enhanceDisabled =
+                                            points < 1 ||
+                                            (!enhanced && Object.keys(enhancements).length >= MAX_ENHANCEMENT_POINTS);
+                                        const tooltip = [
+                                            skill.simpleDescription,
+                                            cleanDescription((skill.descriptions || [])[points]),
+                                        ]
+                                            .filter(Boolean)
+                                            .join('\n\n');
+                                        return (
+                                            <div key={skill.scoreboardId} className={styles.skillRow} title={tooltip}>
+                                                <span className={styles.skillName}>{skill.displayName}</span>
+                                                <span className={styles.skillPoints}>
+                                                    {points}/{maxPoints}
+                                                </span>
+                                                <div className={styles.skillChecks}>
+                                                    {Array.from({ length: maxPoints }).map((_, i) => (
+                                                        <input
+                                                            key={i}
+                                                            type="checkbox"
+                                                            checked={points > i}
+                                                            onChange={() => skillPointClicked(skill.scoreboardId, i)}
+                                                            aria-label={`${skill.displayName} point ${i + 1}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    className={styles.skillEnhance}
+                                                    checked={enhanced && !enhanceDisabled}
+                                                    disabled={enhanceDisabled}
+                                                    onChange={(e) =>
+                                                        enhancementToggled(skill.scoreboardId, e.target.checked)
+                                                    }
+                                                    aria-label={`${skill.displayName} enhancement`}
+                                                    title={
+                                                        points < 1
+                                                            ? 'Enhancement requires at least 1 point'
+                                                            : 'Enhancement (1 enhancement point)'
+                                                    }
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {gameClass == 'none' || !spec || currentSpecSkills.length === 0 ? (
+                ''
+            ) : (
+                <div className="row justify-content-center mb-1">
+                    <div className="col-12">
+                        <div className={styles.skillsSection}>
+                            <div className={styles.skillsHeader}>
+                                <span className={styles.skillsTitle}>{spec} Specialization</span>
+                                <span className={styles.skillTotal}>
+                                    {Object.values(specSkillPoints).reduce((sum, pts) => sum + pts, 0)} /{' '}
+                                    {MAX_SPEC_POINTS} specialization points spent
+                                </span>
+                                {Object.values(specSkillPoints).reduce((sum, pts) => sum + pts, 0) >
+                                    MAX_SPEC_POINTS && (
+                                    <span className="text-danger fw-bold">
+                                        More than {MAX_SPEC_POINTS} specialization points!
+                                    </span>
+                                )}
+                            </div>
+                            <div className={styles.skillsGrid}>
+                                {currentSpecSkills.map((skill) => {
+                                    // Spec skills have [Lv.1, Lv.2] descriptions (no level-0 entry),
+                                    // so the max is the description count, not count - 1.
+                                    const maxPoints = Math.max(0, (skill.descriptions || []).length);
+                                    if (maxPoints === 0) return '';
+                                    const points = specSkillPoints[skill.scoreboardId] || 0;
+                                    const tooltip = [
+                                        skill.simpleDescription,
+                                        cleanDescription((skill.descriptions || [])[Math.max(0, points - 1)]),
+                                    ]
+                                        .filter(Boolean)
+                                        .join('\n\n');
+                                    return (
+                                        <div key={skill.scoreboardId} className={styles.skillRow} title={tooltip}>
+                                            <span className={styles.skillName}>{skill.displayName}</span>
+                                            <span className={styles.skillPoints}>
+                                                {points}/{maxPoints}
+                                            </span>
+                                            <div className={styles.skillChecks}>
+                                                {Array.from({ length: maxPoints }).map((_, i) => (
+                                                    <input
+                                                        key={i}
+                                                        type="checkbox"
+                                                        checked={points > i}
+                                                        onChange={() => specSkillPointClicked(skill.scoreboardId, i)}
+                                                        aria-label={`${skill.displayName} point ${i + 1}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <div className="row justify-content-center mb-1">
+                <div className="col-4 col-md-3 col-lg-2 text-center">
+                    <button type="submit" className={styles.recalcButton} value="Recalculate">
+                        <TranslatableText identifier="builder.buttons.recalculate"></TranslatableText>
+                    </button>
+                </div>
+                <div className="col-4 col-md-3 col-lg-2 text-center">
+                    <button type="button" className={styles.shareButton} id="share" onClick={copyBuild}>
+                        <TranslatableText identifier="builder.buttons.share"></TranslatableText>
+                    </button>
+                </div>
+                <div className="col-4 col-md-3 col-lg-2 text-center">
+                    <button
+                        type="button"
+                        className={styles.shareButton}
+                        id="copyLinkForDiscord"
+                        onClick={copyBuildDiscord}
+                    >
+                        <TranslatableText identifier="builder.buttons.copyLinkForDiscord"></TranslatableText>
+                    </button>
+                </div>
+                <div className="col-4 col-md-3 col-lg-2 text-center">
+                    <button
+                        type="button"
+                        className={styles.shareButton}
+                        id="saveBuild"
+                        onClick={saveBuildToServer}
+                        disabled={saveState === 'saving'}
+                    >
+                        {saveState === 'saving' ? 'Saving...' : saveState === 'copied' ? 'Copied!' : 'Copy short link'}
+                    </button>
+                </div>
+                <div className="col-4 col-md-3 col-lg-2 text-center">
+                    <input
+                        type="button"
+                        className={styles.resetButton}
+                        value={resetConfirm ? 'Confirm' : 'Reset'}
+                        onClick={handleResetClick}
+                        aria-label="Reset build"
+                    />
+                </div>
+            </div>
+            {saveState === 'copied' && (
+                <div className="row justify-content-center my-1">
+                    <div className="col-auto">
+                        <span className={styles.savedLink}>
+                            <b>Copied short link to clipboard!</b>
+                        </span>
+                    </div>
+                </div>
+            )}
+            {saveState === 'error' && (
+                <div className="row justify-content-center my-1">
+                    <div className={styles.importError}>Could not save the build.</div>
+                </div>
+            )}
+            <div className="row justify-content-center mb-1">
+                <div className="col-6 col-md-3 col-lg-2 text-center">
+                    <TranslatableText identifier="items.type.mainhand"></TranslatableText>
+                    <SelectInput
+                        reference={itemRefs.mainhand}
+                        name="mainhand"
+                        default={getEquipName('mainhand')}
+                        noneOption={true}
+                        sortableStats={getRelevantItems(
+                            [
+                                'mainhand',
+                                'mainhand sword',
+                                'mainhand shield',
+                                'axe',
+                                'pickaxe',
+                                'wand',
+                                'scythe',
+                                'bow',
+                                'crossbow',
+                                'snowball',
+                                'trident',
+                                'alchemist bag',
+                            ],
+                            itemData
+                        )}
+                        onChange={itemChanged}
+                    ></SelectInput>
+                </div>
+                <div className="col-6 col-md-3 col-lg-2 text-center">
+                    <TranslatableText identifier="items.type.offhand"></TranslatableText>
+                    <SelectInput
+                        reference={itemRefs.offhand}
+                        name="offhand"
+                        default={getEquipName('offhand')}
+                        noneOption={true}
+                        sortableStats={getRelevantItems(['offhand', 'offhand shield', 'offhand sword'], itemData)}
+                        onChange={itemChanged}
+                    ></SelectInput>
+                </div>
+                <div className="col-6 col-md-3 col-lg-2 text-center">
+                    <TranslatableText identifier="items.type.helmet"></TranslatableText>
+                    <SelectInput
+                        reference={itemRefs.helmet}
+                        noneOption={true}
+                        name="helmet"
+                        default={getEquipName('helmet')}
+                        sortableStats={getRelevantItems(['helmet'], itemData)}
+                        onChange={itemChanged}
+                    ></SelectInput>
+                </div>
+                <div className="col-6 col-md-3 col-lg-2 text-center">
+                    <TranslatableText identifier="items.type.chestplate"></TranslatableText>
+                    <SelectInput
+                        reference={itemRefs.chestplate}
+                        noneOption={true}
+                        name="chestplate"
+                        default={getEquipName('chestplate')}
+                        sortableStats={getRelevantItems(['chestplate'], itemData)}
+                        onChange={itemChanged}
+                    ></SelectInput>
+                </div>
+                <div className="col-6 col-md-3 col-lg-2 text-center">
+                    <TranslatableText identifier="items.type.leggings"></TranslatableText>
+                    <SelectInput
+                        reference={itemRefs.leggings}
+                        noneOption={true}
+                        name="leggings"
+                        default={getEquipName('leggings')}
+                        sortableStats={getRelevantItems(['leggings'], itemData)}
+                        onChange={itemChanged}
+                    ></SelectInput>
+                </div>
+                <div className="col-6 col-md-3 col-lg-2 text-center">
+                    <TranslatableText identifier="items.type.boots"></TranslatableText>
+                    <SelectInput
+                        reference={itemRefs.boots}
+                        noneOption={true}
+                        name="boots"
+                        default={getEquipName('boots')}
+                        sortableStats={getRelevantItems(['boots'], itemData)}
+                        onChange={itemChanged}
+                    ></SelectInput>
+                </div>
+            </div>
+            <div className="row justify-content-center mb-1">
+                {itemTypes.map((type) => {
+                    if (!checkExists(type, stats, itemData)) return '';
+                    const tileName = stats.itemNames[type];
+                    return (
+                        <div className={`col-auto ${styles.builderCol}`} key={`${tileName}-${type}`}>
+                            {stats.fullItemData[type].masterwork != undefined ? (
+                                <MasterworkableItemTile
+                                    update={receiveMasterworkUpdate}
+                                    name={removeMasterworkFromName(tileName)}
+                                    item={createMasterworkData(removeMasterworkFromName(tileName), itemData)}
+                                    default={Number(tileName.split('-').at(-1))}
+                                ></MasterworkableItemTile>
+                            ) : (
+                                <ItemTile name={tileName} item={stats.fullItemData[type]}></ItemTile>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="row mb-1">
+                <div className="col-12">
+                    <CharmSelector
+                        update={updateCharms}
+                        translatableName={'builder.charms.select'}
+                        itemData={itemData}
+                        hideList
+                        charmNames={charms.map((c) => c.name)}
+                    ></CharmSelector>
+                </div>
+            </div>
+            <div className="row justify-content-center mb-1">
+                {charms.map((charm) => (
+                    <div
+                        className={`col-auto ${styles.builderCol}`}
+                        key={charm.name}
+                        onClick={() => removeCharm(charm)}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        <CharmTile name={charm.name} item={charm}></CharmTile>
+                    </div>
+                ))}
+            </div>
+            <div className="row justify-content-center mb-1">
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-1`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.misc"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {miscStats.map((stat) =>
+                        itemsToDisplay[stat.type] !== undefined ? (
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        )
+                    )}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.health"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {healthStats.map((stat) =>
+                        itemsToDisplay[stat.type] !== undefined ? (
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        )
+                    )}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.damageReduction"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">
+                        <TranslatableText identifier="builder.statCategories.damageReduction.sub"></TranslatableText>
+                    </h6>
+                    {DRStats.map((stat) =>
+                        itemsToDisplay[stat.type] !== undefined ? (
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        )
+                    )}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.damageReductionHealthNormalized"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">
+                        <TranslatableText identifier="builder.statCategories.damageReductionHealthNormalized.sub"></TranslatableText>
+                    </h6>
+                    {healthNormalizedDRStats.map((stat) =>
+                        itemsToDisplay[stat.type] !== undefined ? (
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        )
+                    )}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.effectiveHealth"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {(() => {
+                        const unstableEHPTypes = ['meleeEHP', 'projectileEHP', 'magicEHP', 'blastEHP'];
+                        let temp = EHPStats.map((stat) => {
+                            let condition = itemsToDisplay.instability && unstableEHPTypes.includes(stat.type);
+                            return itemsToDisplay[stat.type] !== undefined ? (
+                                <div key={stat.type}>
+                                    <p className={`mb-0 mt-1 ${condition ? styles.grayedout : ''}`}>
+                                        <b>
+                                            <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                        </b>
+                                        <span className={styles.monoValue}>
+                                            {itemsToDisplay[stat.type]}
+                                            {stat.percent ? '%' : ''}
+                                        </span>
+                                    </p>
+                                </div>
+                            ) : (
+                                ''
+                            );
+                        });
+                        if (itemsToDisplay.instability) {
+                            let avg = 0;
+                            unstableEHPTypes.forEach((t) => (avg += Number(itemsToDisplay[t])));
+                            avg /= 4;
+                            temp.unshift(
+                                <div key={'unstableEHP'}>
+                                    <p className="mb-0 mt-1">
+                                        <b>
+                                            <TranslatableText
+                                                identifier={'builder.stats.dr-ehp.unstable'}
+                                            ></TranslatableText>
+                                            :{' '}
+                                        </b>
+                                        <span className={styles.monoValue}>{avg.toFixed(2)}</span>
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return temp;
+                    })()}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.melee"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {meleeStats.map((stat) => {
+                        if (stat.type == 'classAttackDamagePercent' && itemsToDisplay.classAttackDamagePercent == 100)
+                            return '';
+                        return itemsToDisplay[stat.type] !== undefined ? (
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        );
+                    })}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.projectile"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {projectileStats.map((stat) => {
+                        if (
+                            stat.type == 'classProjectileDamagePercent' &&
+                            itemsToDisplay.classProjectileDamagePercent == 100
+                        )
+                            return '';
+                        return itemsToDisplay[stat.type] !== undefined ? (
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        );
+                    })}
+                </div>
+                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-2`}>
+                    <h5 className="text-center fw-bold mb-0">
+                        <TranslatableText identifier="builder.statCategories.magic"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {magicStats.map((stat) => {
+                        if (stat.type == 'classMagicDamagePercent' && itemsToDisplay.classMagicDamagePercent == 100)
+                            return '';
+                        return itemsToDisplay[stat.type] !== undefined &&
+                            (stat.type != 'potionDamage' || itemsToDisplay.spellPowerPercent == '100.00') && // only show potion damage if spell power is 100% (default)
+                            (stat.type != 'spellDamage' || itemsToDisplay.potionDamage == '0.00') ? ( // only show spell damage if potion damage is 0
+                            <div key={stat.type}>
+                                <p className="mb-0 mt-1">
+                                    <b>
+                                        <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                    </b>
+                                    <span className={styles.monoValue}>
+                                        {itemsToDisplay[stat.type]}
+                                        {stat.percent ? '%' : ''}
+                                    </span>
+                                </p>
+                            </div>
+                        ) : (
+                            ''
+                        );
+                    })}
+                </div>
+            </div>
+            <div className="row justify-content-center pt-1 mb-1">
+                <TranslatableText
+                    identifier="builder.misc.situationals"
+                    className="text-center mb-1"
+                ></TranslatableText>
+                {generateSituationalCheckboxes(itemsToDisplay, checkboxChanged)}
+            </div>
+            <div className="d-flex justify-content-center flex-wrap align-items-start mb-1">
+                <div className="text-center mx-2">
+                    <p className="mb-1">
+                        <TranslatableText identifier="builder.misc.maxHealthPercent"></TranslatableText>
+                    </p>
+                    <input
+                        type="number"
+                        name="health"
+                        min="1"
+                        value={statInputs.health}
+                        onChange={(e) => statInputChanged('health', e)}
+                        className={styles.builderCompactInput}
+                    />
+                </div>
+                <div className="text-center mx-2">
+                    <p className="mb-1">Tenacity</p>
+                    <input
+                        type="number"
+                        name="tenacity"
+                        min="0"
+                        max="30"
+                        value={statInputs.tenacity}
+                        onChange={(e) => statInputChanged('tenacity', e)}
+                        className={styles.builderCompactInput}
+                    />
+                </div>
+                <div className="text-center mx-2">
+                    <p className="mb-1">Vitality</p>
+                    <input
+                        type="number"
+                        name="vitality"
+                        min="0"
+                        max="30"
+                        value={statInputs.vitality}
+                        onChange={(e) => statInputChanged('vitality', e)}
+                        className={styles.builderCompactInput}
+                    />
+                </div>
+                <div className="text-center mx-2">
+                    <p className="mb-1">Vigor</p>
+                    <input
+                        type="number"
+                        name="vigor"
+                        min="0"
+                        max="30"
+                        value={statInputs.vigor}
+                        onChange={(e) => statInputChanged('vigor', e)}
+                        className={styles.builderCompactInput}
+                    />
+                </div>
+                <div className="text-center mx-2">
+                    <p className="mb-1">Focus</p>
+                    <input
+                        type="number"
+                        name="focus"
+                        min="0"
+                        max="30"
+                        value={statInputs.focus}
+                        onChange={(e) => statInputChanged('focus', e)}
+                        className={styles.builderCompactInput}
+                    />
+                </div>
+                <div className="text-center mx-2">
+                    <p className="mb-1">Perspicacity</p>
+                    <input
+                        type="number"
+                        name="perspicacity"
+                        min="0"
+                        max="30"
+                        value={statInputs.perspicacity}
+                        onChange={(e) => statInputChanged('perspicacity', e)}
+                        className={styles.builderCompactInput}
+                    />
+                </div>
+            </div>
+            <div className="row pt-1">
+                <span className="text-center text-danger fs-2 fw-bold">
+                    {stats.corruption > 1 ? (
+                        <TranslatableText identifier="builder.errors.corruption"></TranslatableText>
+                    ) : (
+                        ''
+                    )}
+                </span>
+            </div>
+            <div className="row py-1">
+                <span className="text-center text-danger fs-2 fw-bold">
+                    {stats.twoHanded && !stats.weightless && stats.itemNames.offhand != 'None' ? (
+                        <TranslatableText identifier="builder.errors.twoHanded"></TranslatableText>
+                    ) : (
+                        ''
+                    )}
+                </span>
+            </div>
+            <div className="row mb-1 justify-content-center">
+                <div className="col-12 col-md-6 col-lg-2">
+                    <ListSelector
+                        update={damageMultipliersChanged}
+                        translatableName="builder.multipliers.damage"
+                    ></ListSelector>
+                </div>
+                <div className="col-12 col-md-6 col-lg-2">
+                    <ListSelector
+                        update={resistanceMultipliersChanged}
+                        translatableName="builder.multipliers.resistance"
+                    ></ListSelector>
+                </div>
+                <div className="col-12 col-md-6 col-lg-2">
+                    <ListSelector
+                        update={healthMultipliersChanged}
+                        translatableName="builder.multipliers.health"
+                    ></ListSelector>
+                </div>
+                <div className="col-12 col-md-6 col-lg-2">
+                    <ListSelector
+                        update={speedMultipliersChanged}
+                        translatableName="builder.multipliers.speed"
+                    ></ListSelector>
+                </div>
+                <div className="col-12 col-md-6 col-lg-2">
+                    <ListSelector
+                        update={attackSpeedMultipliersChanged}
+                        translatableName="builder.multipliers.attackSpeed"
+                    ></ListSelector>
+                </div>
+            </div>
+        </form>
+    );
+}

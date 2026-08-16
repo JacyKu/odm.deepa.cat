@@ -1,0 +1,88 @@
+'use client';
+
+import React from 'react';
+import styles from '../styles/Footer.module.css';
+import pkg from '../../../package.json';
+
+function GitHubIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02.8-.22 1.65-.33 2.5-.33.85 0 1.7.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z" />
+        </svg>
+    );
+}
+
+function ArrowUpIcon() {
+    return (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" />
+        </svg>
+    );
+}
+
+export default function Footer() {
+    const [sourceOpen, setSourceOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        if (!sourceOpen) return;
+        const onKey = (e) => {
+            if (e.key === 'Escape') setSourceOpen(false);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [sourceOpen]);
+
+    return (
+        <footer className={styles.footer}>
+            <div className={styles.inner}>
+                <div className={styles.text}>
+                    Maintained by <b>JC</b>, developed by <b>Albin</b>, <b>FlamingoBike</b> and <b>Alecboo</b>
+                    <span className={styles.version}> · v{pkg.odm_version}</span>
+                </div>
+                <div className={styles.links}>
+                    <a
+                        className={styles.textLink}
+                        href="https://crowdin.com/project/ohthemisery"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Help translate
+                    </a>
+                    <button
+                        type="button"
+                        className={styles.link}
+                        onClick={() => setSourceOpen(true)}
+                        aria-haspopup="dialog"
+                        aria-label="GitHub"
+                        title="GitHub"
+                    >
+                        <GitHubIcon />
+                    </button>
+                    <a className={styles.link} href="#top" aria-label="Back to top" title="Back to top">
+                        <ArrowUpIcon />
+                    </a>
+                </div>
+            </div>
+
+            {sourceOpen && (
+                <div className={styles.overlay} onClick={() => setSourceOpen(false)} role="presentation">
+                    <div
+                        className={styles.modal}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Source code"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className={styles.modalTitle}>Source code</div>
+                        <p className={styles.modalText}>
+                            The source code isn't available yet, but it will be released soon.
+                        </p>
+                        <button type="button" className={styles.modalClose} onClick={() => setSourceOpen(false)}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
+        </footer>
+    );
+}

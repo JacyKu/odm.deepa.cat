@@ -1,0 +1,15 @@
+{
+    "name": "@deepa/shared",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./apps": "./src/apps.js",
+        "./site-nav": "./src/SiteNav.jsx",
+        "./site-nav.css": "./src/SiteNav.module.css",
+        "./background": "./src/Background.jsx"
+    },
+    "dependencies": {
+        "react": "^19.0.0"
+    }
+}

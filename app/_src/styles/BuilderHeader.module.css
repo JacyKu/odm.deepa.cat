@@ -1,0 +1,52 @@
+.builderHeader {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    /* Balance the pencil icon on the right so the title text centers */
+    padding-left: 46px;
+}
+
+.builderHeaderText {
+    display: inline-block;
+    text-align: left;
+    padding: 1px;
+    font-size: 1.5rem;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.builderHeaderEditIcon {
+    max-width: 34px;
+    max-height: 34px;
+    padding: 2px;
+    border: 1px solid var(--glass-border);
+    border-radius: 0;
+    background: var(--glass-1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex-shrink: 0;
+}
+
+.builderHeaderEditIcon:hover {
+    cursor: pointer;
+    background: var(--glass-2);
+}
+
+.builderHeaderEditIcon:active {
+    cursor: pointer;
+    background: unset;
+}
+
+.theTextbox {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--text-1);
+    font-size: 1.5rem;
+    border: none;
+    outline: none;
+    height: auto;
+    background: transparent;
+}
