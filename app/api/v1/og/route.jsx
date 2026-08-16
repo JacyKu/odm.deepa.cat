@@ -210,21 +210,18 @@ function SkillPanel({ data }) {
   const enhancedIds = new Set((data.enhancements || []).map((e) => (typeof e === 'string' ? e : e.id)));
   if (baseSkills.length === 0 && specSkills.length === 0) return null;
   return (
-    <div style={{ display: 'flex', gap: 22, marginTop: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      {baseSkills.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700, marginBottom: 6 }}>SKILLS</div>
-          <SkillChips skills={baseSkills} color={SKILL_BASE} enhancedIds={enhancedIds} />
-        </div>
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+      {baseSkills.length > 0 && <SkillChips skills={baseSkills} color={SKILL_BASE} enhancedIds={enhancedIds} />}
       {specSkills.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700, marginBottom: 6 }}>{data.spec ? `${data.spec.toUpperCase()}` : 'SPECIALIZATION'}</div>
+          <div style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700, marginBottom: 6 }}>
+            {data.spec ? `${data.spec.toUpperCase()}` : 'SPECIALIZATION'}
+          </div>
           <SkillChips skills={specSkills} color={SKILL_SPEC} enhancedIds={enhancedIds} />
         </div>
       )}
       {enhancedIds.size > 0 && (
-        <div style={{ fontSize: 11, color: DIM, marginTop: 2, alignSelf: 'flex-end' }}>* = enhanced</div>
+        <div style={{ fontSize: 11, color: DIM, marginTop: 2 }}>* = enhanced</div>
       )}
     </div>
   );

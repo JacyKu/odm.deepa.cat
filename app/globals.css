@@ -160,7 +160,9 @@ html a:hover {
 }
 
 main {
-    min-height: 100dvh;
+    /* Keep the footer at the bottom of short pages without overflowing:
+       the main sits between the site nav, the header and the footer. */
+    min-height: calc(100dvh - var(--site-nav-h) - 65px - 95px);
 }
 
 html h1 {
