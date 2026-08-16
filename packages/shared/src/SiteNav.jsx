@@ -1,7 +1,7 @@
 import { getApps } from './apps.js';
 import styles from './SiteNav.module.css';
 
-// The top site nav shared by the platform and STS apps. App links come from
+// The top site nav shared by the platform and ODM apps. App links come from
 // the shared app registry so adding an app updates every app's nav.
 export default function SiteNav() {
     const apps = getApps();
