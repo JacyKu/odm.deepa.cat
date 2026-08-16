@@ -21,17 +21,6 @@ function ArrowUpIcon() {
 }
 
 export default function Footer() {
-    const [sourceOpen, setSourceOpen] = React.useState(false);
-
-    React.useEffect(() => {
-        if (!sourceOpen) return;
-        const onKey = (e) => {
-            if (e.key === 'Escape') setSourceOpen(false);
-        };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
-    }, [sourceOpen]);
-
     return (
         <footer className={styles.footer}>
             <div className={styles.inner}>
@@ -48,41 +37,21 @@ export default function Footer() {
                     >
                         Help translate
                     </a>
-                    <button
-                        type="button"
+                    <a
                         className={styles.link}
-                        onClick={() => setSourceOpen(true)}
-                        aria-haspopup="dialog"
+                        href="https://github.com/JacyKu/odm.deepa.cat"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         aria-label="GitHub"
                         title="GitHub"
                     >
                         <GitHubIcon />
-                    </button>
+                    </a>
                     <a className={styles.link} href="#top" aria-label="Back to top" title="Back to top">
                         <ArrowUpIcon />
                     </a>
                 </div>
             </div>
-
-            {sourceOpen && (
-                <div className={styles.overlay} onClick={() => setSourceOpen(false)} role="presentation">
-                    <div
-                        className={styles.modal}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Source code"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className={styles.modalTitle}>Source code</div>
-                        <p className={styles.modalText}>
-                            The source code isn't available yet, but it will be released soon.
-                        </p>
-                        <button type="button" className={styles.modalClose} onClick={() => setSourceOpen(false)}>
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
         </footer>
     );
 }
