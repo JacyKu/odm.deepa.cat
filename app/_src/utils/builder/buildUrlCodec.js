@@ -168,7 +168,7 @@ export function decodeBuildParam(build, itemData) {
         if (bytes.length < 1 + 6 * 4) return null;
 
         const version = bytes[0];
-        if (version !== 2 && version !== 3) return null;
+        if (version !== 2 && version !== 3 && version !== 4 && version !== 5) return null;
 
         const readU32 = (off) =>
             (bytes[off] | (bytes[off + 1] << 8) | (bytes[off + 2] << 16) | (bytes[off + 3] << 24)) >>> 0;
@@ -272,6 +272,29 @@ export function decodeBuildParam(build, itemData) {
                     }
                     if (enKeys.length > 0) legacy += `&en=${enKeys.join(',')}`;
                 }
+
+                // v4 extras: Celestial Zenith / Depths abilities (name + rarity).
+                if (offset < bytes.length) {
+                    const czCount = readVarint(bytes, offset);
+                    offset = czCount.offset;
+                    const czEntries = [];
+                    for (let i = 0; i < czCount.value && offset + 1 <= bytes.length; i++) {
+                        const nameLen = readVarint(bytes, offset);
+                        offset = nameLen.offset;
+                        if (offset + nameLen.value > bytes.length) break;
+                        const abilityName = decoder.decode(bytes.slice(offset, offset + nameLen.value));
+                        offset += nameLen.value;
+                        const rarity = bytes[offset++];
+                        czEntries.push(rarity > 0 ? `${abilityName}:${rarity}` : abilityName);
+                    }
+                    if (czEntries.length > 0) legacy += `&cz=${encodeURIComponent(czEntries.join(','))}`;
+
+                    // v5 extras: Celestial Zenith ascension level (0-18).
+                    if (version === 5 && offset < bytes.length) {
+                        const ascension = bytes[offset++];
+                        if (ascension > 0) legacy += `&asc=${ascension}`;
+                    }
+                }
             }
         }
 
@@ -341,6 +364,23 @@ export function encodeBuildParam(legacyBuildString) {
                 if (key) enhancements.push(key);
             }
         }
+        // Celestial Zenith / Depths abilities: "Name" or "Name:rarity" (0-5).
+        const czAbilities = [];
+        const czRaw = params.get('cz');
+        if (czRaw) {
+            for (const part of czRaw.split(',')) {
+                const [name, rarityRaw] = part.split(':');
+                if (!name) continue;
+                const rarity = rarityRaw === undefined ? 0 : Number(rarityRaw);
+                if (Number.isInteger(rarity) && rarity >= 0 && rarity < 6) {
+                    czAbilities.push({ name, rarity });
+                }
+            }
+        }
+        // Celestial Zenith ascension level (0-18).
+        const ascRaw = params.get('asc');
+        const ascension = ascRaw === null ? 0 : Number(ascRaw);
+        const ascensionValue = Number.isInteger(ascension) && ascension >= 0 && ascension <= 18 ? ascension : 0;
         // Extra stat inputs (health/tenacity/vitality/vigor/focus/perspicacity/region).
         const STAT_KEYS = ['health', 'tenacity', 'vitality', 'vigor', 'focus', 'perspicacity', 'region'];
         const STAT_DEFAULTS = [100, 0, 0, 0, 0, 0, 3];
@@ -359,6 +399,8 @@ export function encodeBuildParam(legacyBuildString) {
             skills,
             specSkills,
             enhancements,
+            czAbilities,
+            ascension: ascensionValue,
             statValues,
         });
     } catch (e) {
@@ -375,6 +417,8 @@ export function encodeBuildParamBinaryV2({
     skills,
     specSkills,
     enhancements,
+    czAbilities,
+    ascension,
     statValues,
 }) {
     const { encoder } = getTextCodec();
@@ -446,7 +490,20 @@ export function encodeBuildParamBinaryV2({
     }
     const enCount = writeVarint(enParts.length / 2);
 
-    const version = Uint8Array.from([2]);
+    const czParts = [];
+    for (const ability of czAbilities || []) {
+        const nameBytes = encoder.encode(String(ability.name));
+        czParts.push(
+            writeVarint(nameBytes.length),
+            nameBytes,
+            Uint8Array.from([Math.max(0, Math.min(5, Number(ability.rarity) || 0))])
+        );
+    }
+    const czCount = writeVarint(czParts.length / 3);
+
+    const ascByte = Uint8Array.from([Math.max(0, Math.min(18, Number(ascension) || 0))]);
+
+    const version = Uint8Array.from([5]);
     const packed = concatBytes(
         version,
         hashes,
@@ -464,7 +521,10 @@ export function encodeBuildParamBinaryV2({
         specSkillCount,
         ...specSkillParts,
         enCount,
-        ...enParts
+        ...enParts,
+        czCount,
+        ...czParts,
+        ascByte
     );
     return BINARY_V1_PREFIX + toBase64Url(packed);
 }

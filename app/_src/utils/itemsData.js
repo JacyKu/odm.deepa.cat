@@ -7,6 +7,8 @@ let rawCache = null;
 let rawCacheKey = null;
 let skillsCache = null;
 let skillsCacheKey = null;
+let czCache = null;
+let czCacheKey = null;
 
 async function readJson(segments) {
     const filePath = path.join(process.cwd(), 'public', ...segments);
@@ -123,4 +125,17 @@ export async function getSkillsData() {
     skillsCache = await readJson(['items', 'skills.json']);
     skillsCacheKey = key;
     return skillsCache;
+}
+
+// Celestial Zenith / Darkest Depths ability trees (cached). Used by the builder.
+export async function getCzData() {
+    const czPath = path.join(process.cwd(), 'public', 'items', 'czAbilities.json');
+    const stat = await fs.stat(czPath);
+    const key = stat.mtimeMs;
+
+    if (czCache && czCacheKey === key) return czCache;
+
+    czCache = await readJson(['items', 'czAbilities.json']);
+    czCacheKey = key;
+    return czCache;
 }

@@ -976,6 +976,141 @@
     padding: 12px;
 }
 
+.czTree {
+    flex: 1 1 100%;
+    margin-bottom: 6px;
+}
+
+.czSection {
+    padding: 8px;
+}
+
+.czTreeHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-2);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.czTreeHeader:hover {
+    border-color: var(--control-border-hover);
+}
+
+.czTreeDesc {
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.czTreeSkills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 6px;
+    background: var(--glass-1);
+    border: 2px solid var(--control-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.czSkillRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 8px;
+    cursor: help;
+}
+
+.czSkillRow:hover {
+    background: var(--glass-2);
+}
+
+.czTrigger {
+    font-size: 11px;
+    color: var(--text-2);
+    border: 1px solid var(--control-border);
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+.czRarityWrap {
+    position: relative;
+}
+
+.czRarity {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 96px;
+    background: var(--glass-2);
+    color: var(--text-1);
+    border: 2px solid var(--control-border);
+    font-size: 12px;
+    padding: 1px 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.czRarity:hover {
+    border-color: var(--control-border-hover);
+}
+
+.czRarityDisabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.czRarityCaret {
+    color: var(--text-2);
+    font-size: 9px;
+}
+
+.czRarityMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 50;
+    background: var(--glass-1);
+    border: 2px solid var(--control-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.czRarityOption {
+    padding: 2px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-1);
+    background: var(--glass-2);
+}
+
+.czRarityOption:hover {
+    background: var(--surface-2);
+}
+
+.czRarityOptionActive {
+    background: var(--surface-2);
+    font-weight: bold;
+}
+
+.czRarity:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.czDisabled {
+    opacity: 0.45;
+}
+
 .importRow {
     display: flex;
     gap: 8px;

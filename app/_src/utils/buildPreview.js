@@ -59,6 +59,8 @@ export function getLinkPreviewData(build, itemData, skillsData) {
         const className = params.get('cl') || null;
         const regionRaw = params.get('region');
         const region = Number.isFinite(Number(regionRaw)) ? Number(regionRaw) : 3;
+        const ascRaw = params.get('asc');
+        const ascension = Number.isFinite(Number(ascRaw)) ? Number(ascRaw) : 0;
 
         const skills = [];
         const skRaw = params.get('sk');
@@ -84,6 +86,18 @@ export function getLinkPreviewData(build, itemData, skillsData) {
         if (enRaw) {
             for (const key of enRaw.split(',')) {
                 if (key) enhancements.push(key);
+            }
+        }
+        // Celestial Zenith / Depths abilities (name + rarity index).
+        const czAbilities = [];
+        const czRaw = params.get('cz');
+        if (czRaw) {
+            for (const part of czRaw.split(',')) {
+                const [name, rarityRaw] = part.split(':');
+                const rarity = rarityRaw === undefined ? 0 : Number(rarityRaw);
+                if (name && Number.isInteger(rarity) && rarity >= 0 && rarity < 6) {
+                    czAbilities.push({ name, rarity });
+                }
             }
         }
         // resolve display names from the skills data when available
@@ -122,6 +136,8 @@ export function getLinkPreviewData(build, itemData, skillsData) {
             spec,
             specSkills,
             enhancements,
+            czAbilities,
+            ascension,
             region,
         };
     } catch (e) {
@@ -168,6 +184,17 @@ export function getLinkPreviewDescription(build, itemData, skillsData) {
         `${EMOJI.boots} ${formatItem(i.boots)}`,
         charmInline,
     ];
+
+    if (data.czAbilities.length > 0) {
+        const rarityLabel = (r) => ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Twisted'][r] || '';
+        parts.push(
+            `🔮 CZ: ${data.czAbilities.map((a) => (a.rarity > 0 ? `${a.name} (${rarityLabel(a.rarity)})` : a.name)).join(', ')}`
+        );
+    }
+
+    if (data.ascension > 0) {
+        parts.push(`🪜 Ascension ${data.ascension}`);
+    }
 
     // Discord renders newlines in embed descriptions.
     return parts.join('\n');

@@ -107,6 +107,8 @@ const regions = [
     { value: 1, label: 'Valley' },
     { value: 2, label: 'Isles' },
     { value: 3, label: 'Ring' },
+    { value: 'dd', label: 'Darkest Depths' },
+    { value: 'cz', label: 'Celestial Zenith' },
 ];
 
 // Extra stat inputs that are part of the build (shared in the link under their full names).
@@ -335,6 +337,36 @@ function cleanDescription(desc) {
     );
 }
 
+// Replaces #{Common|Uncommon|Rare|Epic|Legendary|Twisted} templates in CZ/Depths
+// ability descriptions with the value for the selected rarity index (0-5).
+function formatCzDescription(desc, rarity) {
+    const KEYBINDS = {
+        'key.attack': 'Left Button',
+        'key.use': 'Right Button',
+        'key.swapOffhand': 'Swap',
+        'key.drop': 'Drop',
+    };
+    return String(desc || '')
+        .replace(/#\{([^}]+)\}/g, (match, group) => {
+            const values = group.split('|');
+            const v = values[rarity] ?? values[values.length - 1];
+            return v === undefined ? match : v;
+        })
+        .replace(/key\.\w+/g, (match) => KEYBINDS[match] || match);
+}
+
+// The trees listed on the Celestial Zenith abilities wiki page.
+const CZ_MAIN_TREES = [
+    'Dawnbringer',
+    'Earthbound',
+    'Flamecaller',
+    'Frostborn',
+    'Shadowdancer',
+    'Steelsage',
+    'Windwalker',
+    'Prismatic',
+];
+
 export default function BuildForm({
     update,
     build,
@@ -362,6 +394,12 @@ export default function BuildForm({
     const [spec, setSpec] = React.useState(null); // specialization name
     const [specSelectKey, setSpecSelectKey] = React.useState(0);
     const [specSkillPoints, setSpecSkillPoints] = React.useState({});
+    const [czAbilities, setCzAbilities] = React.useState({}); // ability name -> rarity index
+    const [czData, setCzData] = React.useState(null);
+    const [czOpen, setCzOpen] = React.useState(false);
+    const [czOpenTrees, setCzOpenTrees] = React.useState({});
+    const [czRarityOpen, setCzRarityOpen] = React.useState(null); // ability name with the rarity menu open
+    const [ascension, setAscension] = React.useState(0); // Celestial Zenith ascension level (0-18)
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
@@ -370,28 +408,51 @@ export default function BuildForm({
     }
 
     function regionChanged(newValue) {
-        const nextRegion = Number(newValue.value);
+        const raw = newValue ? newValue.value : null;
+        // 'dd' = Darkest Depths (Isles' 12+), 'cz' = Celestial Zenith (Ring's 12+).
+        const nextRegion = raw === 'dd' ? 2 : raw === 'cz' ? 3 : Number(raw);
         setRegionValue(nextRegion);
+        setCzOpen(raw === 'dd' || raw === 'cz');
 
         // Region gating: Valley (1) has no specializations at all; Valley and
-        // Isles (1-2) have no enhancements or charms. Clear whatever the new
-        // region forbids so the UI can't show stale selections.
+        // Isles (1-2) have no enhancements or charms. Depths abilities only
+        // exist in Darkest Depths (Isles) and Celestial Zenith (Ring).
         let nextSpec = spec;
         let nextSpecPoints = specSkillPoints;
         let nextEnhancements = enhancements;
         let nextCharms = charms;
+        let nextCz = czAbilities;
+        // Ascension levels only exist in Celestial Zenith (Ring's 12+).
+        let nextAscension = ascension;
+        if (!(nextRegion === 3 && raw === 'cz')) {
+            nextAscension = 0;
+            setAscension(0);
+        }
         if (nextRegion === 1) {
             nextSpec = null;
             nextSpecPoints = {};
             setSpec(null);
             setSpecSelectKey((k) => k + 1);
             setSpecSkillPoints({});
+            nextCz = {};
+            setCzAbilities({});
+            setCzOpen(false);
         }
         if (nextRegion < 3) {
             nextEnhancements = {};
             nextCharms = [];
             setEnhancements({});
             setCharms([]);
+        }
+        if (nextRegion === 2) {
+            // Prismatic is Celestial Zenith-only (not available in the Depths).
+            nextCz = Object.fromEntries(
+                Object.entries(nextCz).filter(
+                    ([name]) =>
+                        !czData?.trees?.some((t) => t.tree === 'Prismatic' && t.skills.some((s) => s.name === name))
+                )
+            );
+            setCzAbilities(nextCz);
         }
         refreshClassBuffs(skillPoints, nextSpecPoints, nextEnhancements);
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
@@ -402,6 +463,8 @@ export default function BuildForm({
             spec: nextSpec,
             specSkills: nextSpecPoints,
             enhancements: nextEnhancements,
+            czAbilities: nextCz,
+            ascension: nextAscension,
         });
         syncUrl(getStsBase() + '/builder/' + token);
     }
@@ -580,6 +643,29 @@ export default function BuildForm({
         syncUrl(getStsBase() + '/builder/' + token);
     }
 
+    function czChanged(abilityName, rarity) {
+        // rarity null/undefined deselects; otherwise 0-5 (Common..Twisted).
+        const next = { ...czAbilities };
+        if (rarity === null || rarity === undefined) delete next[abilityName];
+        else next[abilityName] = rarity;
+        setCzAbilities(next);
+        const token = makeBuildString(null, null, null, null, { czAbilities: next });
+        syncUrl(getStsBase() + '/builder/' + token);
+    }
+
+    function ascensionChanged(newValue) {
+        const next = Math.max(0, Math.min(18, Number(newValue?.value) || 0));
+        setAscension(next);
+        const token = makeBuildString(null, null, null, null, { ascension: next });
+        syncUrl(getStsBase() + '/builder/' + token);
+    }
+
+    function clearCz() {
+        setCzAbilities({});
+        const token = makeBuildString(null, null, null, null, { czAbilities: {} });
+        syncUrl(getStsBase() + '/builder/' + token);
+    }
+
     function saveBuildToServer() {
         const token = makeBuildString();
         const path = window.location.pathname;
@@ -622,6 +708,40 @@ export default function BuildForm({
             })
             .catch(() => {});
     }, []);
+
+    React.useEffect(() => {
+        fetch('/api/v1/cz')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d && Array.isArray(d.trees)) setCzData(d);
+            })
+            .catch(() => {});
+    }, []);
+
+    // Prismatic abilities only exist in Celestial Zenith (Ring); drop them when
+    // planning a Darkest Depths (Isles) build, once the data is known.
+    React.useEffect(() => {
+        if (!czData || regionValue !== 2 || Object.keys(czAbilities).length === 0) return;
+        const prismaticNames = new Set(
+            czData.trees.find((t) => t.tree === 'Prismatic')?.skills.map((s) => s.name) || []
+        );
+        const next = Object.fromEntries(Object.entries(czAbilities).filter(([name]) => !prismaticNames.has(name)));
+        if (Object.keys(next).length !== Object.keys(czAbilities).length) {
+            setCzAbilities(next);
+        }
+    }, [czData, regionValue]);
+
+    // Close the open rarity menu when clicking elsewhere (but not inside the
+    // menu or its button — a mousedown there must survive until the click).
+    React.useEffect(() => {
+        if (!czRarityOpen) return;
+        const close = (e) => {
+            if (e.target && e.target.closest && e.target.closest('[class*="czRarityWrap"]')) return;
+            setCzRarityOpen(null);
+        };
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
+    }, [czRarityOpen]);
 
     function sendUpdate(event) {
         event.preventDefault();
@@ -732,6 +852,30 @@ export default function BuildForm({
                 loadedEnhancements = nextEnhancements;
                 setEnhancements(nextEnhancements);
             }
+            let czPart = buildParts.find((str) => str.includes('cz='));
+            let nextCz = {};
+            if (czPart) {
+                const parsedCz = {};
+                decodeURIComponent(czPart.split('cz=')[1])
+                    .split(',')
+                    .forEach((part) => {
+                        const [name, rarityRaw] = part.split(':');
+                        const rarity = rarityRaw === undefined ? 0 : Number(rarityRaw);
+                        if (name && Number.isInteger(rarity) && rarity >= 0 && rarity < 6) {
+                            parsedCz[name] = rarity;
+                        }
+                    });
+                nextCz = parsedCz;
+                setCzAbilities(parsedCz);
+                setCzOpen(true);
+            }
+            let ascPart = buildParts.find((str) => str.startsWith('asc='));
+            if (ascPart && czPart) {
+                const asc = Number(ascPart.split('asc=')[1]);
+                if (Number.isInteger(asc) && asc >= 0 && asc <= 18) setAscension(asc);
+            } else {
+                setAscension(0);
+            }
             // Skills that were removed from the API: drop their points from the
             // form so the counters stay honest (the original URL is untouched
             // until the user edits and the link is rewritten).
@@ -788,11 +932,23 @@ export default function BuildForm({
                 setSpecSkillPoints({});
                 setEnhancements({});
                 setCharms([]);
+                setCzAbilities({});
+                setCzOpen(false);
                 refreshClassBuffs({}, {}, {});
             } else if (loadedRegion < 3) {
                 setEnhancements({});
                 setCharms([]);
                 refreshClassBuffs(skillPoints, specSkillPoints, {});
+            }
+            if (loadedRegion === 2) {
+                const prismaticOnly = Object.keys(nextCz).filter((name) =>
+                    czData?.trees?.some((t) => t.tree === 'Prismatic' && t.skills.some((s) => s.name === name))
+                );
+                if (prismaticOnly.length > 0) {
+                    const cleaned = { ...nextCz };
+                    prismaticOnly.forEach((name) => delete cleaned[name]);
+                    setCzAbilities(cleaned);
+                }
             }
         }
     }, [parentLoaded]);
@@ -1030,6 +1186,20 @@ export default function BuildForm({
             legacy += `&en=${enForUrl.join(',')}`;
         }
 
+        const czForUrl = stateOverride?.czAbilities
+            ? Object.entries(stateOverride.czAbilities)
+            : Object.entries(czAbilities);
+        if (czForUrl.length > 0) {
+            legacy += `&cz=${encodeURIComponent(
+                czForUrl.map(([name, r]) => (r > 0 ? `${name}:${r}` : name)).join(',')
+            )}`;
+        }
+
+        const ascForUrl = stateOverride?.ascension !== undefined ? stateOverride.ascension : ascension;
+        if (ascForUrl > 0) {
+            legacy += `&asc=${ascForUrl}`;
+        }
+
         return encodeBuildParam(legacy);
     }
 
@@ -1229,6 +1399,12 @@ export default function BuildForm({
         setUpdateLink(false);
     }
 
+    const czAllSkills = czData ? czData.trees.flatMap((t) => t.skills) : [];
+    const czAbilityMap = new Map(czAllSkills.map((s) => [s.name, s]));
+    const czActiveCount = Object.keys(czAbilities).filter(
+        (name) => czAbilityMap.get(name)?.trigger && czAbilityMap.get(name).trigger !== 'Passive'
+    ).length;
+
     return (
         <form ref={formRef} onSubmit={sendUpdate} onReset={resetForm} id="buildForm">
             {/* Top row: region/class/spec on the left, title centered, import on the right */}
@@ -1243,9 +1419,15 @@ export default function BuildForm({
                                 instanceId="this-is-just-here-so-react-doesnt-yell-at-me"
                                 id="region"
                                 name="region"
-                                key={`region-${regionSelectKey}`}
+                                key={`region-${regionSelectKey}-${czOpen ? 'o' : 'c'}`}
                                 options={regions}
-                                defaultValue={regions.find((r) => r.value === regionValue)}
+                                defaultValue={
+                                    czOpen && regionValue === 2
+                                        ? { value: 'dd', label: 'Darkest Depths' }
+                                        : czOpen && regionValue === 3
+                                          ? { value: 'cz', label: 'Celestial Zenith' }
+                                          : regions.find((r) => r.value === regionValue)
+                                }
                                 menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                                 menuPosition="fixed"
                                 theme={(theme) => ({
@@ -1281,24 +1463,40 @@ export default function BuildForm({
                             />
                         </FloatingLabel>
                     </div>
-                    <div>
-                        <SelectInput
-                            key={`class-${classSelectKey}`}
-                            name="class"
-                            floatingLabel="Class"
-                            noneOption={true}
-                            sortableStats={classes}
-                            default={
-                                gameClass != 'none'
-                                    ? {
-                                          value: gameClass.charAt(0).toUpperCase() + gameClass.slice(1),
-                                          label: gameClass.charAt(0).toUpperCase() + gameClass.slice(1),
-                                      }
-                                    : undefined
-                            }
-                            onChange={classChanged}
-                        />
-                    </div>
+                    {czOpen && regionValue === 3 ? (
+                        <div>
+                            <SelectInput
+                                key={`asc-${ascension}`}
+                                name="asc"
+                                floatingLabel="Ascension"
+                                sortableStats={Array.from({ length: 19 }, (_, i) => ({
+                                    value: i,
+                                    label: String(i),
+                                }))}
+                                default={ascension > 0 ? { value: ascension, label: String(ascension) } : undefined}
+                                onChange={ascensionChanged}
+                            />
+                        </div>
+                    ) : (
+                        <div>
+                            <SelectInput
+                                key={`class-${classSelectKey}`}
+                                name="class"
+                                floatingLabel="Class"
+                                noneOption={true}
+                                sortableStats={classes}
+                                default={
+                                    gameClass != 'none'
+                                        ? {
+                                              value: gameClass.charAt(0).toUpperCase() + gameClass.slice(1),
+                                              label: gameClass.charAt(0).toUpperCase() + gameClass.slice(1),
+                                          }
+                                        : undefined
+                                }
+                                onChange={classChanged}
+                            />
+                        </div>
+                    )}
                     {gameClass == 'none' || regionValue === 1 ? (
                         ''
                     ) : (
@@ -1330,14 +1528,12 @@ export default function BuildForm({
                 </div>
             </div>
 
-            {gameClass == 'none' ? (
-                ''
-            ) : (
+            {!czOpen && gameClass != 'none' && (
                 <div className="row justify-content-center pt-1 mb-1">
                     <div className="col-12">
                         <div className={styles.skillsSection}>
                             <div className={styles.skillsHeader}>
-                                <span className={styles.skillsTitle}>Skills</span>
+                                <span className={styles.skillsTitle}>Skills</span>{' '}
                                 <span className={styles.skillTotal}>
                                     {Object.values(skillPoints).reduce((sum, pts) => sum + pts, 0)} / {MAX_SKILL_POINTS}{' '}
                                     skill points spent
@@ -1429,7 +1625,7 @@ export default function BuildForm({
                     </div>
                 </div>
             )}
-            {gameClass == 'none' || !spec || currentSpecSkills.length === 0 ? (
+            {(!czOpen && gameClass == 'none') || !spec || currentSpecSkills.length === 0 ? (
                 ''
             ) : (
                 <div className="row justify-content-center mb-1">
@@ -1478,6 +1674,181 @@ export default function BuildForm({
                                     );
                                 })}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {czOpen && (
+                <div className="row justify-content-center pt-1 mb-1">
+                    <div className="col-12">
+                        <div className={styles.czSection}>
+                            <div className={styles.skillsHeader}>
+                                <span className={styles.skillsTitle}>
+                                    {regionValue === 2 ? 'Darkest Depths' : 'Celestial Zenith'}
+                                </span>
+                                <span className={styles.skillTotal}>{czActiveCount} / 4 active abilities</span>
+                                {czActiveCount > 4 && (
+                                    <span className="text-danger fw-bold">
+                                        You can't use more than 4 actives on A12+!
+                                    </span>
+                                )}
+                                <span className={styles.skillTotal}>
+                                    Class skills are disabled in {regionValue === 2 ? 'the Depths' : 'Celestial Zenith'}
+                                    .
+                                </span>
+                                <button type="button" className={styles.skillActionButton} onClick={clearCz}>
+                                    Clear all
+                                </button>
+                            </div>
+                            {!czData ? (
+                                <div className={styles.skillsLoading}>Loading abilities...</div>
+                            ) : (
+                                <div className={styles.skillsGrid}>
+                                    {czData.trees
+                                        .filter((t) => CZ_MAIN_TREES.includes(t.tree))
+                                        .filter((t) => regionValue !== 2 || t.tree !== 'Prismatic')
+                                        .map((tree) => {
+                                            const selectedCount = tree.skills.filter(
+                                                (s) => czAbilities[s.name] !== undefined
+                                            ).length;
+                                            return (
+                                                <div key={tree.tree} className={styles.czTree}>
+                                                    <div
+                                                        className={styles.czTreeHeader}
+                                                        onClick={() =>
+                                                            setCzOpenTrees((o) => ({
+                                                                ...o,
+                                                                [tree.tree]: !o[tree.tree],
+                                                            }))
+                                                        }
+                                                    >
+                                                        <span>{czOpenTrees[tree.tree] ? '▾' : '▸'}</span>
+                                                        <span>{tree.tree}</span>
+                                                        <span className={styles.czTreeDesc}>{tree.description}</span>
+                                                        <span className={styles.skillTotal}>
+                                                            {selectedCount} selected
+                                                        </span>
+                                                    </div>
+                                                    {czOpenTrees[tree.tree] && (
+                                                        <div className={styles.czTreeSkills}>
+                                                            {tree.skills.map((ability) => {
+                                                                const selected =
+                                                                    czAbilities[ability.name] !== undefined;
+                                                                const rarity = czAbilities[ability.name] ?? 0;
+                                                                const desc =
+                                                                    (regionValue === 2
+                                                                        ? ability.depths_description
+                                                                        : ability.zenith_description) ||
+                                                                    ability.zenith_description ||
+                                                                    '';
+                                                                const triggerTaken =
+                                                                    ability.trigger !== 'Passive' &&
+                                                                    czData.trees.some(
+                                                                        (t2) =>
+                                                                            t2.tree !== tree.tree &&
+                                                                            t2.skills.some(
+                                                                                (s2) =>
+                                                                                    s2.name !== ability.name &&
+                                                                                    czAbilities[s2.name] !==
+                                                                                        undefined &&
+                                                                                    s2.trigger === ability.trigger
+                                                                            )
+                                                                    );
+                                                                const tooltip = [
+                                                                    `${ability.name} (${ability.trigger})`,
+                                                                    czData.rarities[rarity],
+                                                                    formatCzDescription(desc, rarity),
+                                                                    triggerTaken
+                                                                        ? 'Already using another ability with this trigger!'
+                                                                        : null,
+                                                                ]
+                                                                    .filter(Boolean)
+                                                                    .join('\n\n');
+                                                                return (
+                                                                    <div
+                                                                        key={ability.name}
+                                                                        className={`${styles.czSkillRow}${
+                                                                            triggerTaken && !selected
+                                                                                ? ` ${styles.czDisabled}`
+                                                                                : ''
+                                                                        }`}
+                                                                        title={tooltip}
+                                                                    >
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={selected}
+                                                                            disabled={triggerTaken && !selected}
+                                                                            onChange={(e) =>
+                                                                                czChanged(
+                                                                                    ability.name,
+                                                                                    e.target.checked ? rarity : null
+                                                                                )
+                                                                            }
+                                                                            aria-label={`${ability.name} (${ability.trigger})`}
+                                                                        />
+                                                                        <span className={styles.skillName}>
+                                                                            {ability.name}
+                                                                        </span>
+                                                                        <span className={styles.czTrigger}>
+                                                                            {ability.trigger}
+                                                                        </span>
+                                                                        <div className={styles.czRarityWrap}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className={`${styles.czRarity}${
+                                                                                    !selected
+                                                                                        ? ` ${styles.czRarityDisabled}`
+                                                                                        : ''
+                                                                                }`}
+                                                                                disabled={!selected}
+                                                                                onClick={() =>
+                                                                                    setCzRarityOpen((cur) =>
+                                                                                        cur === ability.name
+                                                                                            ? null
+                                                                                            : ability.name
+                                                                                    )
+                                                                                }
+                                                                                title="Rarity"
+                                                                            >
+                                                                                {czData.rarities[rarity]}
+                                                                                <span className={styles.czRarityCaret}>
+                                                                                    ▾
+                                                                                </span>
+                                                                            </button>
+                                                                            {czRarityOpen === ability.name && (
+                                                                                <div className={styles.czRarityMenu}>
+                                                                                    {czData.rarities.map((r, i) => (
+                                                                                        <div
+                                                                                            key={r}
+                                                                                            className={`${styles.czRarityOption}${
+                                                                                                i === rarity
+                                                                                                    ? ` ${styles.czRarityOptionActive}`
+                                                                                                    : ''
+                                                                                            }`}
+                                                                                            onClick={() => {
+                                                                                                czChanged(
+                                                                                                    ability.name,
+                                                                                                    i
+                                                                                                );
+                                                                                                setCzRarityOpen(null);
+                                                                                            }}
+                                                                                        >
+                                                                                            {r}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -29,6 +29,91 @@ function maxCharms() {
     return names;
 }
 
+const czData = JSON.parse(await fs.readFile(path.join(__dirname, '..', 'public', 'items', 'czAbilities.json'), 'utf8'));
+
+const CZ_MAIN_TREES = [
+    'Dawnbringer',
+    'Earthbound',
+    'Flamecaller',
+    'Frostborn',
+    'Shadowdancer',
+    'Steelsage',
+    'Windwalker',
+    'Prismatic',
+];
+
+// Deterministic PRNG so debug runs are reproducible; override with STS_DEBUG_SEED.
+function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+        a |= 0;
+        a = (a + 0x6d2b79f5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+const SEED = Number(process.env.STS_DEBUG_SEED) || 20260817;
+const rng = mulberry32(SEED);
+const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+const randomRarity = () => Math.floor(rng() * 6);
+
+const SLOT_TYPES = {
+    m: ['Mainhand Sword', 'Axe', 'Wand', 'Bow', 'Scythe', 'Crossbow', 'Trident', 'Mainhand', 'Mainhand Shield'],
+    o: ['Offhand', 'Offhand Sword', 'Offhand Shield'],
+    h: ['Helmet'],
+    c: ['Chestplate'],
+    l: ['Leggings'],
+    b: ['Boots'],
+};
+
+function randomGear() {
+    const parts = [];
+    for (const [short, types] of Object.entries(SLOT_TYPES)) {
+        const options = Object.keys(itemData).filter((k) => types.includes(itemData[k].type));
+        if (options.length > 0) parts.push(`${short}=${encodeURIComponent(pick(options))}`);
+    }
+    return parts;
+}
+
+function randomCharms() {
+    const charms = Object.keys(itemData).filter((k) => itemData[k].type === 'Charm');
+    const names = [];
+    let power = 0;
+    let guard = 0;
+    while (guard++ < 50 && power < 12) {
+        const key = pick(charms);
+        const p = Number(itemData[key].power) || 0;
+        if (power + p > 12) continue;
+        names.push(key);
+        power += p;
+    }
+    return names;
+}
+
+// Every passive plus one random ability per non-passive trigger (one per
+// activation is the only legal constraint), with random rarities.
+function randomCzAbilities(includePrismatic) {
+    const trees = czData.trees.filter(
+        (t) => CZ_MAIN_TREES.includes(t.tree) && (includePrismatic || t.tree !== 'Prismatic')
+    );
+    const byTrigger = new Map();
+    const passives = [];
+    for (const tree of trees) {
+        for (const ability of tree.skills) {
+            if (ability.trigger === 'Passive') {
+                passives.push(ability.name);
+            } else {
+                if (!byTrigger.has(ability.trigger)) byTrigger.set(ability.trigger, []);
+                byTrigger.get(ability.trigger).push(ability.name);
+            }
+        }
+    }
+    const selected = passives.map((name) => `${name}:${randomRarity()}`);
+    for (const [, names] of byTrigger) selected.push(`${pick(names)}:${randomRarity()}`);
+    return selected;
+}
+
 const legacyBuild = [
     'm=Wand%20of%20Spring&o=Corrupted%20Key%205&h=Ensanguined%20Flower&c=Lunar%20Ascension&l=Outsider%27s%20Gaze&b=Crystal%20Cluster',
     `charm=${charmParam(['Lunar Ascension', "Outsider's Gaze", 'Deep Resonant Fragment'])}`,
@@ -104,6 +189,33 @@ const builds = [
         name: 'trk5umlk',
         build: 'v1_Alm309_xFT7TssP8C710IBp2GdZ5k0RZQGhSZXMtdG9uZ3VlLTItQSxNeWMtX1NlcnVtLTEtQSxPdmUtX0ZsYXNrLTItQSxIZXItYWxfT3JlLTEtQSxBYnktX0NvcmFsLTEtQSxCb3QtZmluaXR5LTItQSxMZXMtZl9NYW5hLTEtTQAJQWxjaGVtaXN0CA9HcnVlc29tZUFsY2hlbXkCDUJydXRhbEFsY2hlbXkCDElyb25UaW5jdHVyZQIKQWxjaGVtaWNhbAIQVm9sYXRpbGVSZWFjdGlvbgIPVW5zdGFibGVBbWFsZ2FtAhBFbmVyZ2l6aW5nRWxpeGlyAgZCZXpvYXICZAAAAAAAAwlIYXJiaW5nZXIDDVNjb3JjaGVkRWFydGgCBVRhYm9vAghFc290ZXJpYwIDCkFsY2hlbWljYWwNQnJ1dGFsQWxjaGVteRBWb2xhdGlsZVJlYWN0aW9u',
         note: 'real saved build (b/TRK5Umlk): Alchemist/Harbinger, 7 charms',
+    },
+    {
+        name: 'max-cz',
+        build: encodeBuildParam(
+            [
+                ...randomGear(),
+                `charm=${charmParam(randomCharms())}`,
+                'cl=Cleric',
+                `cz=${encodeURIComponent(randomCzAbilities(true).join(','))}`,
+                'region=3',
+                'asc=18',
+            ].join('&')
+        ),
+        note: `Celestial Zenith: random gear/charms + all passives + random ability per trigger (seed ${SEED})`,
+    },
+    {
+        name: 'max-dd',
+        build: encodeBuildParam(
+            [
+                ...randomGear(),
+                `charm=${charmParam(randomCharms())}`,
+                'cl=Cleric',
+                `cz=${encodeURIComponent(randomCzAbilities(false).join(','))}`,
+                'region=2',
+            ].join('&')
+        ),
+        note: `Darkest Depths: same but no Prismatic, no ascension (seed ${SEED})`,
     },
 ];
 
