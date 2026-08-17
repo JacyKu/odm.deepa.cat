@@ -3,9 +3,6 @@
 :root {
     color-scheme: dark;
 
-    /* Height of the fixed platform nav; the sts header sticks below it. */
-    --site-nav-h: 65px;
-
     /* Theme primitives (reusing existing palette values) */
     --bg-0: #000;
     --surface-1: #111;
@@ -161,8 +158,8 @@ html a:hover {
 
 main {
     /* Keep the footer at the bottom of short pages without overflowing:
-       the main sits between the site nav, the header and the footer. */
-    min-height: calc(100dvh - var(--site-nav-h) - 65px - 95px);
+       the main sits between the header and the footer. */
+    min-height: calc(100dvh - 65px - 95px);
 }
 
 html h1 {
@@ -261,9 +258,4 @@ button:disabled {
     border: 1px solid var(--glass-border);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-}
-
-/* Content wrapper: offset below the fixed site nav (shared with the platform app). */
-.site-content {
-    padding-top: var(--site-nav-h);
 }

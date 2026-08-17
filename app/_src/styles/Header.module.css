@@ -42,7 +42,7 @@
 
 .header {
     position: sticky;
-    top: var(--site-nav-h, 65px);
+    top: 0;
     z-index: 10;
     background: var(--glass-1);
     backdrop-filter: blur(12px);

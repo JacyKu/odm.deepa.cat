@@ -3,7 +3,7 @@
 }
 
 .main {
-    min-height: calc(100vh - var(--site-nav-h) - 65px - 95px);
+    min-height: calc(100vh - 65px - 95px);
     padding: 4rem 0;
     flex: 1;
     display: flex;
