@@ -45,7 +45,7 @@ export default async function StsLayout({ children }) {
                 />
             </head>
             <body>
-                <SiteNav />
+                <SiteNav showBeta />
                 <link rel="stylesheet" href={base + '/spritesheets/_minecraft.css'} />
                 <link rel="stylesheet" href={base + '/spritesheets/_itemsheet.css'} />
                 <link rel="stylesheet" href={base + '/spritesheets/_charmsheet.css'} />
