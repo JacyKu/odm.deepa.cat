@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import styles from '../../styles/Items.module.css';
-import { getOdmBase } from '../../utils/base';
+import { getStsBase } from '../../utils/base';
 import { encodeBuildParam } from '../../utils/builder/buildUrlCodec';
 
 function parseImportedBuild(raw) {
@@ -51,7 +51,7 @@ export default function BuildImportBar({ embedded }) {
         }
         setError(false);
         setValue('');
-        router.replace(getOdmBase() + '/builder/' + encodeBuildParam(buildString));
+        router.replace(getStsBase() + '/builder/' + encodeBuildParam(buildString));
     }
 
     if (embedded) {

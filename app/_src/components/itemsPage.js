@@ -27,6 +27,64 @@ function getStatValue(value) {
     return value;
 }
 
+// Type-group filters: selecting one of these matches every item type in the group.
+const TYPE_GROUPS = {
+    ALL_OFFHANDS: ['Offhand', 'Offhand Sword', 'Offhand Shield'],
+    ALL_MELEE_MAINHANDS: [
+        'Mainhand',
+        'Mainhand Shield',
+        'Mainhand Sword',
+        'Axe',
+        'Pickaxe',
+        'Trident',
+        'Scythe',
+        'Shovel',
+    ],
+    ALL_MAINHANDS: [
+        'Mainhand',
+        'Mainhand Shield',
+        'Mainhand Sword',
+        'Axe',
+        'Pickaxe',
+        'Trident',
+        'Scythe',
+        'Shovel',
+        'Bow',
+        'Snowball',
+        'Crossbow',
+        'Wand',
+        'Alchemist Bag',
+    ],
+};
+
+// Human-readable ability text for a charm (stat names + values), used to let
+// free-text searches match charm abilities.
+function buildCharmAbilityText(item) {
+    if (!item?.stats) return '';
+    const parts = [];
+    for (const [stat, v] of Object.entries(item.stats)) {
+        const value = typeof v === 'object' && v !== null ? v.value : v;
+        if (value === undefined || value === null) continue;
+        const human = stat
+            .split('_')
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+        parts.push(`${Number(value) > 0 ? '+' : ''}${value} ${human} (${stat})`);
+    }
+    return parts.join(', ');
+}
+
+let charmAbilityCache = null;
+function getCharmAbilityTextMap(itemData) {
+    if (charmAbilityCache && charmAbilityCache.data === itemData) return charmAbilityCache.map;
+    const map = new Map();
+    for (const key of Object.keys(itemData)) {
+        if (itemData[key].type === 'Charm') map.set(key, buildCharmAbilityText(itemData[key]).toLowerCase());
+    }
+    charmAbilityCache = { data: itemData, map };
+    return map;
+}
+
 function getRelevantItems(data, itemData) {
     let items = Object.keys(itemData);
     items = items.filter((name) => itemData[name].base_item != 'Written Book');
@@ -34,12 +92,18 @@ function getRelevantItems(data, itemData) {
     if (data.searchName) {
         // Check if the user inputted any "|" to search for multiple item names at once.
         let names = data.searchName.split('|').map((name) => name.toLowerCase().trim());
+        const charmAbilityText = getCharmAbilityTextMap(itemData);
         items = items.filter((key) => {
             let result = false;
             names.forEach((term) => {
                 if (itemData[key].name.toLowerCase().includes(term)) {
                     result = true;
                     return;
+                }
+                // Charms can also be found by their ability text.
+                const ability = charmAbilityText.get(key);
+                if (ability && ability.includes(term)) {
+                    result = true;
                 }
             });
             return result;
@@ -54,8 +118,8 @@ function getRelevantItems(data, itemData) {
     if (wantedItemTypes.length > 0) {
         items = items.filter((name) => {
             const type = itemData[name].type;
-            // Alchemist utensils are mainhands: match them under "Mainhand" too.
-            return wantedItemTypes.includes(type) || (type === 'Alchemist Bag' && wantedItemTypes.includes('Mainhand'));
+            // Type-group tokens expand to several item types; plain entries match directly.
+            return wantedItemTypes.some((w) => (TYPE_GROUPS[w] ? TYPE_GROUPS[w].includes(type) : w === type));
         });
     }
 

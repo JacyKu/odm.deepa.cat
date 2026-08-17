@@ -4,6 +4,7 @@ node_modules/
 public/items/
 public/spritesheets/
 data/
+embed-debug/
 package-lock.json
 *.db
 *.db-wal

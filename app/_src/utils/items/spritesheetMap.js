@@ -1,4 +1,4 @@
-import { getOdmBase } from '../base';
+import { getStsBase } from '../base';
 
 let spriteMapPromise;
 let spriteMapCache;
@@ -8,7 +8,7 @@ export function loadItemSpriteMap() {
         return Promise.resolve(spriteMapCache);
     }
     if (!spriteMapPromise) {
-        spriteMapPromise = fetch(getOdmBase() + '/spritesheets/itemsheet-map.json')
+        spriteMapPromise = fetch(getStsBase() + '/spritesheets/itemsheet-map.json')
             .then((response) => (response.ok ? response.json() : {}))
             .catch(() => ({}))
             .then((map) => {

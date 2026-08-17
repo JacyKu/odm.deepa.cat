@@ -1,6 +1,6 @@
 import styles from '../styles/HomeButton.module.css';
 import Link from 'next/link';
-import { getOdmBase } from '../utils/base';
+import { getStsBase } from '../utils/base';
 
 function HomeIcon() {
     return (
@@ -13,7 +13,7 @@ function HomeIcon() {
 export default function HomeButton() {
     return (
         <div className={styles.homebutton} title="Go to homepage">
-            <Link href={getOdmBase() + '/'} className={styles.button}>
+            <Link href={getStsBase() + '/'} className={styles.button}>
                 <HomeIcon />
             </Link>
         </div>

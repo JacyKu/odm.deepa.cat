@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { getBuild } from '../../../lib/odm-builds';
+import { getBuild } from '../../../lib/sts-builds';
 import { getItemData, getSkillsData } from '../../_src/utils/itemsData';
 import { getLinkPreviewTitle, getLinkPreviewDescription } from '../../_src/utils/buildPreview';
 import BuilderPage from '../../_src/components/builderPage';
-import { odmBaseForHost } from '../../_src/utils/base';
+import { stsBaseForHost } from '../../_src/utils/base';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }) {
         description,
         keywords,
         openGraph: {
-            siteName: 'ODE TO MISERY',
+            siteName: 'SPARE THE SYMPATHY',
             type: 'website',
             title,
             description,
@@ -50,7 +50,7 @@ export default async function BuildLinkPage({ params }) {
     const build = getBuild(p.id);
 
     const headersList = await headers();
-    const base = odmBaseForHost(headersList.get('host') || '');
+    const base = stsBaseForHost(headersList.get('host') || '');
 
     if (!build) {
         redirect(base + '/builder');

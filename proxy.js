@@ -4,7 +4,7 @@ export function proxy(request) {
     const host = request.headers.get('host') || '';
     const hostname = host.split(':')[0].toLowerCase();
 
-    globalThis.__deepaOdmBase = hostname ? '' : '';
+    globalThis.__deepaStsBase = hostname ? '' : '';
 
     return NextResponse.next();
 }

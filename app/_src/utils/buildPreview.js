@@ -57,6 +57,8 @@ export function getLinkPreviewData(build, itemData, skillsData) {
         const nameValue = params.get('name') || null;
 
         const className = params.get('cl') || null;
+        const regionRaw = params.get('region');
+        const region = Number.isFinite(Number(regionRaw)) ? Number(regionRaw) : 3;
 
         const skills = [];
         const skRaw = params.get('sk');
@@ -120,12 +122,14 @@ export function getLinkPreviewData(build, itemData, skillsData) {
             spec,
             specSkills,
             enhancements,
+            region,
         };
     } catch (e) {
         return null;
     }
 }
 
+// Discord wraps long embed descriptions itself, so charm names just join in one line.
 export function getLinkPreviewDescription(build, itemData, skillsData) {
     const data = getLinkPreviewData(build, itemData, skillsData);
     if (!data) return '';
@@ -138,34 +142,18 @@ export function getLinkPreviewDescription(build, itemData, skillsData) {
         return displayName;
     };
 
-    const wrapCharmList = (prefix, charmItems, maxLen) => {
-        if (!charmItems || charmItems.length === 0) return '🧿 Charms: None';
-
-        const lines = [];
-        let current = prefix;
-
-        for (const charm of charmItems) {
-            const charmText = charm.power != null ? `${charm.name} ${charm.power}★` : charm.name;
-            const addition = (current === prefix ? '' : ', ') + charmText;
-            if (current.length + addition.length > maxLen && current !== prefix) {
-                lines.push(current);
-                current = charmText;
-            } else {
-                current += addition;
-            }
-        }
-
-        if (current) lines.push(current);
-        return lines.join('\n');
-    };
-
-    const charmInline = wrapCharmList(`🧿 Charms (${data.charms.totalPower}★): `, data.charms.items, 90);
+    const charmInline =
+        data.charms.items.length === 0
+            ? '🧿 Charms: None'
+            : `🧿 Charms (${data.charms.totalPower}★): ${data.charms.items
+                  .map((charm) => (charm.power != null ? `${charm.name} ${charm.power}★` : charm.name))
+                  .join(', ')}`;
 
     // The card image already shows class/spec/skills; the text keeps only gear + charms.
     const EMOJI = {
         mainhand: '⚔️',
         offhand: '🛡️',
-        helmet: '🪖',
+        helmet: '⛑️',
         chestplate: '🦺',
         leggings: '👖',
         boots: '🥾',
@@ -185,8 +173,20 @@ export function getLinkPreviewDescription(build, itemData, skillsData) {
     return parts.join('\n');
 }
 
-export function getLinkPreviewTitle(build, itemData, buildName) {
-    const data = getLinkPreviewData(build, itemData);
-    const name = data?.name || (buildName && buildName !== 'Monumenta Builder' ? buildName : null);
+// The build name shown when the user hasn't typed one: "R3 Swordsage build" /
+// "R1 Rogue build" (region 1-3, spec name if picked, otherwise the class).
+export function getEffectiveBuildName(data, buildName) {
+    const explicitName = data?.name || (buildName && buildName !== 'Monumenta Builder' ? buildName : null);
+    if (explicitName) return explicitName;
+    if (data?.className) {
+        const region = [1, 2, 3].includes(data.region) ? data.region : 3;
+        return `R${region} ${data.spec || data.className} build`;
+    }
+    return null;
+}
+
+export function getLinkPreviewTitle(build, itemData, buildName, skillsData) {
+    const data = getLinkPreviewData(build, itemData, skillsData);
+    const name = getEffectiveBuildName(data, buildName);
     return (name ? name + ' - ' : '') + 'Monumenta Builder';
 }

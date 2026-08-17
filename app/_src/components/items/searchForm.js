@@ -24,27 +24,32 @@ export default function SearchForm({ update, itemData }) {
         'Chestplate',
         'Leggings',
         'Boots',
+        { value: 'ALL_MAINHANDS', label: 'All mainhands' },
+        { value: 'ALL_MELEE_MAINHANDS', label: 'All melee mainhands' },
+        { value: 'Mainhand', label: 'Misc mainhands' },
+        'Mainhand Sword',
+        'Mainhand Shield',
         'Axe',
-        'Wand',
-        'Scythe',
         'Pickaxe',
+        'Trident',
+        'Scythe',
         'Shovel',
         'Bow',
         'Crossbow',
+        'Wand',
         'Snowball',
-        'Trident',
         'Projectile',
-        'Offhand Shield',
-        'Mainhand Shield',
-        'Mainhand Sword',
+        { value: 'ALL_OFFHANDS', label: 'All offhands' },
+        { value: 'Offhand', label: 'Misc offhands' },
         'Offhand Sword',
-        'Mainhand',
-        'Offhand',
+        'Offhand Shield',
         'Alchemist Bag',
         'Consumable',
         'Misc',
         'Charm',
     ];
+    // The "Not" filter only makes sense with concrete types, not group tokens.
+    const notItemTypes = itemTypes.filter((entry) => typeof entry === 'string');
     const charmClasses = [
         'Alchemist',
         'Mage',
@@ -133,7 +138,7 @@ export default function SearchForm({ update, itemData }) {
                     key={`notCat-${itemStatKey}`}
                     uniqueKey={uniqueKey}
                     resetKey={itemStatKey}
-                    itemTypes={itemTypes}
+                    itemTypes={notItemTypes}
                     tiers={tiers}
                     locations={locations}
                     regions={regions}

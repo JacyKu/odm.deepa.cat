@@ -1,5 +1,5 @@
 // Shared app registry: every enabled entry becomes a link in the site nav
-// (used by both the platform app and the ODM app).
+// (used by both the platform app and the STS app).
 //
 // Add new apps here. Set `subdomain` to reach the app via <subdomain>.your-domain.
 // Set `enabled: false` to keep an app hidden and unreachable until it is ready
@@ -7,9 +7,9 @@
 
 const apps = [
     {
-        slug: 'odm',
-        subdomain: 'odm',
-        label: 'Ode to Misery',
+        slug: 'sts',
+        subdomain: 'sts',
+        label: 'Spare the Sympathy',
         description: 'Monumenta item guide and build tool',
         enabled: true,
     },

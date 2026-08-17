@@ -69,6 +69,7 @@ const SelectInput = (data) => {
                 menu: (base) => ({ ...base, zIndex: 9999 }),
             }}
             onChange={data.onChange}
+            filterOption={data.filterOption}
         />
     );
 

@@ -1,34 +1,35 @@
 import { headers } from 'next/headers';
 import './globals.css';
 import { LanguageContextProvider } from './_src/components/languageContext';
+import { LowResourceProvider } from './_src/components/lowResourceContext';
 import Header from './_src/components/header';
 import Footer from './_src/components/footer';
 import SiteNav from '@deepa/shared/site-nav';
 
 export const metadata = {
     title: {
-        default: 'Ode to Misery',
-        template: '%s - Ode to Misery',
+        default: 'Spare the Sympathy',
+        template: '%s - Spare the Sympathy',
     },
     description: 'Monumenta Items and Builds',
-    metadataBase: new URL('https://odm.deepa.cat'),
+    metadataBase: new URL('https://sts.deepa.cat'),
     icons: { icon: '/favicon/favicon.ico' },
     openGraph: {
-        siteName: 'Ode to Misery',
+        siteName: 'Spare the Sympathy',
         type: 'website',
-        title: 'Ode to Misery',
+        title: 'Spare the Sympathy',
         description: 'Monumenta Items and Builds',
         images: [{ url: '/favicon/favicon.png' }],
     },
     twitter: {
         card: 'summary',
-        title: 'Ode to Misery',
+        title: 'Spare the Sympathy',
         description: 'Monumenta Items and Builds',
         images: ['/favicon/favicon.png'],
     },
 };
 
-export default async function OdmLayout({ children }) {
+export default async function StsLayout({ children }) {
     const headersList = await headers();
     const host = headersList.get('host') || '';
     const base = host ? '' : '';
@@ -55,11 +56,13 @@ export default async function OdmLayout({ children }) {
                     crossOrigin="anonymous"
                 />
                 <div className="site-content" id="top">
-                    <LanguageContextProvider>
-                        <Header />
-                        {children}
-                        <Footer />
-                    </LanguageContextProvider>
+                    <LowResourceProvider>
+                        <LanguageContextProvider>
+                            <Header />
+                            {children}
+                            <Footer />
+                        </LanguageContextProvider>
+                    </LowResourceProvider>
                 </div>
             </body>
         </html>

@@ -67,6 +67,13 @@
     padding: 20px;
 }
 
+.lowResIcon {
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--control-border, #333);
+    background: var(--surface-2, #17171f);
+}
+
 .itemsContainer {
     display: flex;
     justify-content: space-evenly;

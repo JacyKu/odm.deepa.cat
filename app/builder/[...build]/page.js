@@ -17,7 +17,7 @@ export async function generateMetadata({ params }) {
             description: 'Monumenta build tool.',
             keywords,
             openGraph: {
-                siteName: 'ODE TO MISERY',
+                siteName: 'SPARE THE SYMPATHY',
                 type: 'website',
                 title: 'Monumenta Builder',
                 images: [{ url: '/favicon/favicon.png' }],
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }) {
         description,
         keywords,
         openGraph: {
-            siteName: 'ODE TO MISERY',
+            siteName: 'SPARE THE SYMPATHY',
             type: 'website',
             title,
             description,

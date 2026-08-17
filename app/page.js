@@ -3,15 +3,15 @@
 import React from 'react';
 import styles from './_src/styles/Home.module.css';
 import Link from 'next/link';
-import { getOdmBase } from './_src/utils/base';
+import { getStsBase } from './_src/utils/base';
 import TranslatableText from './_src/components/translatableText';
 
 export default function Home() {
-    const [base, setBase] = React.useState('/odm');
+    const [base, setBase] = React.useState('/sts');
     const [itemCount, setItemCount] = React.useState(null);
 
     React.useEffect(() => {
-        setBase(getOdmBase());
+        setBase(getStsBase());
         fetch('/api/v1/spritesheetCoverage')
             .then((r) => (r.ok ? r.json() : null))
             .then((d) => {
@@ -23,7 +23,7 @@ export default function Home() {
     return (
         <div className={styles.container}>
             <main className={styles.main}>
-                <h1 className={styles.title}>Ode to Misery</h1>
+                <h1 className={styles.title}>Spare the Sympathy</h1>
                 {itemCount !== null && <p className={styles.stats}>{itemCount.toLocaleString()} items catalogued</p>}
                 <div className={styles.grid}>
                     <Link href={base + '/items'} className={styles.card}>

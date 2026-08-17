@@ -5,6 +5,7 @@ npm-debug.log*
 yarn-debug.log*
 .env
 .env*.local
-data/odm-builds.db*
+data/sts-builds.db*
+embed-debug/
 .vscode/
 .idea/

@@ -26,6 +26,13 @@ function processItemData(itemData, extras) {
     itemData['Carcano 9138'] = itemData['Carcano 91/38'];
     delete itemData['Carcano 91/38'];
 
+    // hardcoded exemption: the API classifies 3-D Glasses as Misc, but it is a helmet
+    for (const item in itemData) {
+        if (itemData[item].name === '3-D Glasses') {
+            itemData[item].type = 'Helmet';
+        }
+    }
+
     // Add OTM extra info based on item's name
     // (so that it gets copied the same to each masterwork level)
     for (const item in itemData) {

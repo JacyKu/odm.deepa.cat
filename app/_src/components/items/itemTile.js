@@ -3,7 +3,9 @@ import styles from '../../styles/Items.module.css';
 import TranslatableText from '../translatableText';
 import React from 'react';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
+import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
+import { useLowResource } from '../lowResourceContext';
 
 function camelCase(str, upper) {
     if (!str) return '';
@@ -49,6 +51,7 @@ function doesNameContainNonASCII(name) {
 export default function ItemTile(data) {
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
+    const { lowRes } = useLowResource();
     const [cssClass, setCssClass] = React.useState(getItemsheetClass(item.name));
     const [baseBackgroundClass, setBaseBackgroundClass] = React.useState('monumenta-items');
     const [spriteMap, setSpriteMap] = React.useState(null);
@@ -89,13 +92,17 @@ export default function ItemTile(data) {
 
         // Otherwise, default to a minecraft texture.
         setBaseBackgroundClass('minecraft');
-        setCssClass(`minecraft-${item['base_item'].replaceAll(' ', '-').replaceAll('_', '-').toLowerCase()}`);
+        setCssClass(`minecraft-${getMinecraftTextureKey(item['base_item'])}`);
     }, [item, spriteMap]);
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
             <div className={styles.imageIcon}>
-                <div className={[baseBackgroundClass, cssClass].join(' ')}></div>
+                {lowRes ? (
+                    <div className={styles.lowResIcon}></div>
+                ) : (
+                    <div className={[baseBackgroundClass, cssClass].join(' ')}></div>
+                )}
             </div>
             <span
                 className={`${styles[camelCase(item.location)]} ${item.tier == 'Tier 3' && item.region == 'Ring' ? styles['tier5'] : styles[camelCase(item.tier)]} ${styles.name}`}

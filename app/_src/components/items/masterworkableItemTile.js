@@ -3,7 +3,9 @@ import styles from '../../styles/Items.module.css';
 import React from 'react';
 import TranslatableText from '../translatableText';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
+import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
+import { useLowResource } from '../lowResourceContext';
 
 function camelCase(str, upper) {
     if (!str) return '';
@@ -115,6 +117,7 @@ export default function MasterworkableItemTile(data) {
     // This is an array
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
+    const { lowRes } = useLowResource();
 
     // If the item name has accented characters, they are actually not present in the item's name property,
     // but they are present in the item's key. In that case, set the name to the key.
@@ -175,7 +178,7 @@ export default function MasterworkableItemTile(data) {
         } else {
             // Otherwise, default to a minecraft texture.
             setBaseBackgroundClass('minecraft');
-            setCssClass(`minecraft-${activeItem['base_item'].replaceAll(' ', '-').replaceAll('_', '-').toLowerCase()}`);
+            setCssClass(`minecraft-${getMinecraftTextureKey(activeItem['base_item'])}`);
         }
 
         const stars = [star1, star2, star3, star4];
@@ -203,7 +206,11 @@ export default function MasterworkableItemTile(data) {
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
             <div className={styles.imageIcon}>
-                <div className={[baseBackgroundClass, cssClass].join(' ')}></div>
+                {lowRes ? (
+                    <div className={styles.lowResIcon}></div>
+                ) : (
+                    <div className={[baseBackgroundClass, cssClass].join(' ')}></div>
+                )}
             </div>
             <span
                 className={`${styles[camelCase(activeItem.location)]} ${styles[camelCase(activeItem.tier)]} ${styles.name}`}

@@ -4,12 +4,48 @@ import CharmTile from '../items/charmTile';
 import SelectInput from '../items/selectInput';
 import React from 'react';
 
+// Human-readable ability text for a charm (stat names + values), so the
+// selector search can match abilities, not just names.
+function charmAbilityText(item) {
+    if (!item?.stats) return '';
+    const parts = [];
+    for (const [stat, v] of Object.entries(item.stats)) {
+        const value = typeof v === 'object' && v !== null ? v.value : v;
+        if (value === undefined || value === null) continue;
+        const human = stat
+            .split('_')
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+        parts.push(`${Number(value) > 0 ? '+' : ''}${value} ${human}`);
+    }
+    return parts.join(', ');
+}
+
+let abilityCache = null;
+function getAbilityTextMap(itemData) {
+    if (abilityCache && abilityCache.data === itemData) return abilityCache.map;
+    const map = new Map();
+    for (const key of Object.keys(itemData)) {
+        if (itemData[key].type === 'Charm') map.set(key, charmAbilityText(itemData[key]).toLowerCase());
+    }
+    abilityCache = { data: itemData, map };
+    return map;
+}
+
 export default function CharmSelector({ update, translatableName, itemData, hideList, charmNames }) {
     const inputRef = React.useRef();
 
     const maxPower = 12;
     const entries = charmNames || [];
     const usedPower = entries.reduce((sum, name) => sum + (itemData[name]?.power || 0), 0);
+
+    const abilityTextMap = getAbilityTextMap(itemData);
+    const charmFilterOption = (option, input) => {
+        const query = input.toLowerCase();
+        if (option.label.toLowerCase().includes(query)) return true;
+        const ability = abilityTextMap.get(option.value);
+        return Boolean(ability && ability.includes(query));
+    };
 
     function processUpdate(updatedEntries) {
         update(updatedEntries);
@@ -42,6 +78,7 @@ export default function CharmSelector({ update, translatableName, itemData, hide
                         name="charm"
                         noneOption={true}
                         sortableStats={Object.keys(itemData).filter((name) => itemData[name].type == 'Charm')}
+                        filterOption={charmFilterOption}
                     ></SelectInput>
                 </span>
                 <button className={styles.button} onClick={addEntry}>

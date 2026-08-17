@@ -20,8 +20,8 @@ const sources = [
     },
 ];
 
-const user = process.env.ODM_MONUMENTA_USER;
-const pass = process.env.ODM_MONUMENTA_PASS;
+const user = process.env.STS_MONUMENTA_USER;
+const pass = process.env.STS_MONUMENTA_PASS;
 if (user && pass) {
     sources[0].headers.Authorization = 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');
 }
@@ -70,6 +70,17 @@ async function main() {
         console.error(`\nFailed to fetch from all sources. Last error: ${lastError?.message}`);
         console.error('items.json left unchanged.');
         process.exit(1);
+    }
+
+    // The API classifies a few items in a way we want to override.
+    const TYPE_OVERRIDES = {
+        '3-D Glasses': 'Helmet',
+    };
+    for (const key of result.keys) {
+        const name = result.data[key]?.name;
+        if (name && TYPE_OVERRIDES[name]) {
+            result.data[key].type = TYPE_OVERRIDES[name];
+        }
     }
 
     const removed = currentCount - result.keys.length;

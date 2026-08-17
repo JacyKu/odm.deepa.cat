@@ -1,4 +1,4 @@
-﻿import Select from 'react-select';
+import Select from 'react-select';
 import SelectInput from '../items/selectInput';
 import FloatingLabel from '../items/floatingLabel';
 import LoreToggle from '../items/loreToggle';
@@ -10,7 +10,7 @@ import BuildImportBar from './buildImportBar';
 import BuilderHeader from '../items/builderHeader';
 import styles from '../../styles/Items.module.css';
 import React from 'react';
-import { getOdmBase } from '../../utils/base';
+import { getStsBase } from '../../utils/base';
 
 import Stats from '../../utils/builder/stats';
 import TranslatableText from '../translatableText';
@@ -131,7 +131,7 @@ const specSkillBuffKeys = {
 
 const MAX_ENHANCEMENT_POINTS = 3;
 const MAX_SPEC_POINTS = 4;
-const MAX_SKILL_POINTS = 12;
+const MAX_SKILL_POINTS = 10;
 
 const enabledClassAbilityBuffs = {
     versatile: false,
@@ -367,8 +367,40 @@ export default function BuildForm({
     }
 
     function regionChanged(newValue) {
-        setRegionValue(Number(newValue.value));
-        recalcAndSyncUrl();
+        const nextRegion = Number(newValue.value);
+        setRegionValue(nextRegion);
+
+        // Region gating: Valley (1) has no specializations at all; Valley and
+        // Isles (1-2) have no enhancements or charms. Clear whatever the new
+        // region forbids so the UI can't show stale selections.
+        let nextSpec = spec;
+        let nextSpecPoints = specSkillPoints;
+        let nextEnhancements = enhancements;
+        let nextCharms = charms;
+        if (nextRegion === 1) {
+            nextSpec = null;
+            nextSpecPoints = {};
+            setSpec(null);
+            setSpecSelectKey((k) => k + 1);
+            setSpecSkillPoints({});
+        }
+        if (nextRegion < 3) {
+            nextEnhancements = {};
+            nextCharms = [];
+            setEnhancements({});
+            setCharms([]);
+        }
+        refreshClassBuffs(skillPoints, nextSpecPoints, nextEnhancements);
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(nextCharms, null, null, null, {
+            spec: nextSpec,
+            specSkills: nextSpecPoints,
+            enhancements: nextEnhancements,
+        });
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     React.useEffect(() => {
@@ -456,7 +488,7 @@ export default function BuildForm({
             skillsOverride,
             enhancementsOverride ? { enhancements: enhancementsOverride } : null
         );
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function skillPointClicked(skillId, pointIndex) {
@@ -493,7 +525,7 @@ export default function BuildForm({
         setStats(tempStats);
         update(tempStats);
         const token = makeBuildString(null, null, null, null, { specSkills: nextPoints });
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function setAllSkillPoints(points) {
@@ -528,7 +560,7 @@ export default function BuildForm({
         setStats(tempStats);
         update(tempStats);
         const token = makeBuildString(null, null, null, null, { enhancements: next });
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function specChanged(newValue, actionMeta) {
@@ -542,7 +574,7 @@ export default function BuildForm({
         setStats(tempStats);
         update(tempStats);
         const token = makeBuildString(null, null, null, null, { spec: specName, specSkills: {} });
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function saveBuildToServer() {
@@ -550,7 +582,7 @@ export default function BuildForm({
         const path = window.location.pathname;
 
         // Already on the short-link page with no edits: reuse the existing short link, no DB write.
-        if (path.startsWith(getOdmBase() + '/b/')) {
+        if (path.startsWith(getStsBase() + '/b/')) {
             setSaveState('copied');
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(window.location.href).catch(() => {});
@@ -567,9 +599,9 @@ export default function BuildForm({
         })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
             .then((d) => {
-                const link = window.location.origin + getOdmBase() + '/b/' + d.id;
+                const link = window.location.origin + getStsBase() + '/b/' + d.id;
                 // Move onto the short link so an unedited reload reuses it instead of re-saving.
-                syncUrl(getOdmBase() + '/b/' + d.id);
+                syncUrl(getStsBase() + '/b/' + d.id);
                 setSaveState('copied');
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(link).catch(() => {});
@@ -595,7 +627,7 @@ export default function BuildForm({
         setStats(tempStats);
         update(tempStats);
         const token = makeBuildString();
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     React.useEffect(() => {
@@ -697,6 +729,26 @@ export default function BuildForm({
                 loadedEnhancements = nextEnhancements;
                 setEnhancements(nextEnhancements);
             }
+            // Skills that were removed from the API: drop their points from the
+            // form so the counters stay honest (the original URL is untouched
+            // until the user edits and the link is rewritten).
+            const loadedClass = classPart?.split('cl=')[1] || null;
+            const loadedSpec = spPart ? decodeURIComponent(spPart.split('sp=')[1]) : null;
+            const classData = skillsData?.classes?.find(
+                (c) => (c.className || '').toLowerCase() == (loadedClass || '').toLowerCase()
+            );
+            const knownSkillIds = new Set((classData?.skills || []).map((s) => s.scoreboardId));
+            const specData = loadedSpec ? classData?.specs?.find((s) => s.specName == loadedSpec) : null;
+            const knownSpecSkillIds = new Set((specData?.specSkills || []).map((s) => s.scoreboardId));
+            loadedSkillPoints = Object.fromEntries(
+                Object.entries(loadedSkillPoints).filter(([id]) => knownSkillIds.has(id))
+            );
+            loadedSpecPoints = Object.fromEntries(
+                Object.entries(loadedSpecPoints).filter(([id]) => knownSpecSkillIds.has(id))
+            );
+            setSkillPoints(loadedSkillPoints);
+            setSpecSkillPoints(loadedSpecPoints);
+
             refreshClassBuffs(loadedSkillPoints, loadedSpecPoints, loadedEnhancements);
             // extra stat inputs (health/tenacity/vitality/vigor/focus/perspicacity/region)
             const statValues = {};
@@ -718,6 +770,21 @@ export default function BuildForm({
             const tempStats = recalcBuild({ ...itemNames, ...statValues }, itemData);
             setStats(tempStats);
             update(tempStats);
+
+            // Region gating: drop whatever the loaded region forbids (see regionChanged).
+            const loadedRegion = Number(statValues.region) || 3;
+            if (loadedRegion === 1) {
+                setSpec(null);
+                setSpecSelectKey((k) => k + 1);
+                setSpecSkillPoints({});
+                setEnhancements({});
+                setCharms([]);
+                refreshClassBuffs({}, {}, {});
+            } else if (loadedRegion < 3) {
+                setEnhancements({});
+                setCharms([]);
+                refreshClassBuffs(skillPoints, specSkillPoints, {});
+            }
         }
     }, [parentLoaded]);
 
@@ -749,7 +816,7 @@ export default function BuildForm({
         const tempStats = recalcBuild(emptyBuild, itemData);
         setStats(tempStats);
         update(tempStats);
-        syncUrl(getOdmBase() + '/builder');
+        syncUrl(getStsBase() + '/builder');
     }
 
     function receiveMasterworkUpdate(newActiveItem, itemType) {
@@ -784,7 +851,7 @@ export default function BuildForm({
             label: newActiveItem.name,
         });
         const token = makeBuildString(null, Object.entries(newBuild));
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
 
         const tempStats = recalcBuild(newBuild, itemData);
         setStats(tempStats);
@@ -792,7 +859,7 @@ export default function BuildForm({
     }
 
     function copyBuild(event) {
-        let baseUrl = `${window.location.origin}${getOdmBase()}/builder/`;
+        let baseUrl = `${window.location.origin}${getStsBase()}/builder/`;
         event.target.value = 'Copied!';
         event.target.classList.add('fw-bold');
         setTimeout(() => {
@@ -815,14 +882,20 @@ export default function BuildForm({
     }
 
     function copyBuildDiscord(event) {
-        let baseUrl = `${window.location.origin}${getOdmBase()}/builder/`;
+        let baseUrl = `${window.location.origin}${getStsBase()}/builder/`;
         event.target.value = 'Copied!';
         event.target.classList.add('fw-bold');
         setTimeout(() => {
             event.target.value = 'Copy link for Discord';
             event.target.classList.remove('fw-bold');
         }, 3000);
-        let tempBuildName = buildName ? buildName : 'Monumenta Builder';
+        const classLabel = gameClass != 'none' ? gameClass.charAt(0).toUpperCase() + gameClass.slice(1) : null;
+        const tempBuildName =
+            buildName && buildName != 'Monumenta Builder'
+                ? buildName
+                : classLabel
+                  ? `R${regionValue} ${spec || classLabel} build`
+                  : 'Monumenta Builder';
 
         if (!navigator.clipboard) {
             window.alert("Couldn't copy build to clipboard. Sadness. :(");
@@ -979,7 +1052,7 @@ export default function BuildForm({
         let charmData = charmNames.map((name) => itemData[name]);
         setCharms(charmData);
         const token = makeBuildString(charmData);
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function removeCharm(charm) {
@@ -1003,7 +1076,7 @@ export default function BuildForm({
         setStats(tempStats);
         update(tempStats);
         const token = makeBuildString(null, entries);
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function classChanged(newValue, actionMeta) {
@@ -1022,7 +1095,7 @@ export default function BuildForm({
         setStats(tempStats);
         update(tempStats);
         const token = makeBuildString(null, null, newClass, [], { spec: null, specSkills: {}, enhancements: {} });
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     const miscStats = [
@@ -1113,7 +1186,7 @@ export default function BuildForm({
         // awkward signal thing to update the link from the builderheader to get the name properly fixed up
         // don't need to worry about updating the build string since it auto updates on dropdown change now
         const token = makeBuildString();
-        syncUrl(getOdmBase() + '/builder/' + token);
+        syncUrl(getStsBase() + '/builder/' + token);
         setUpdateLink(false);
     }
 
@@ -1187,7 +1260,7 @@ export default function BuildForm({
                             onChange={classChanged}
                         />
                     </div>
-                    {gameClass == 'none' ? (
+                    {gameClass == 'none' || regionValue === 1 ? (
                         ''
                     ) : (
                         <div className="ms-3">
@@ -1230,10 +1303,12 @@ export default function BuildForm({
                                     {Object.values(skillPoints).reduce((sum, pts) => sum + pts, 0)} / {MAX_SKILL_POINTS}{' '}
                                     skill points spent
                                 </span>
-                                <span className={styles.skillTotal}>
-                                    {Object.keys(enhancements).length} / {MAX_ENHANCEMENT_POINTS} enhancement points
-                                    used
-                                </span>
+                                {regionValue >= 3 && (
+                                    <span className={styles.skillTotal}>
+                                        {Object.keys(enhancements).length} / {MAX_ENHANCEMENT_POINTS} enhancement points
+                                        used
+                                    </span>
+                                )}
                                 {Object.values(skillPoints).reduce((sum, pts) => sum + pts, 0) > MAX_SKILL_POINTS && (
                                     <span className="text-danger fw-bold">
                                         More than {MAX_SKILL_POINTS} skill points!
@@ -1284,24 +1359,32 @@ export default function BuildForm({
                                                             checked={points > i}
                                                             onChange={() => skillPointClicked(skill.scoreboardId, i)}
                                                             aria-label={`${skill.displayName} point ${i + 1}`}
+                                                            title={[
+                                                                skill.simpleDescription,
+                                                                cleanDescription((skill.descriptions || [])[i + 1]),
+                                                            ]
+                                                                .filter(Boolean)
+                                                                .join('\n\n')}
                                                         />
                                                     ))}
                                                 </div>
-                                                <input
-                                                    type="checkbox"
-                                                    className={styles.skillEnhance}
-                                                    checked={enhanced && !enhanceDisabled}
-                                                    disabled={enhanceDisabled}
-                                                    onChange={(e) =>
-                                                        enhancementToggled(skill.scoreboardId, e.target.checked)
-                                                    }
-                                                    aria-label={`${skill.displayName} enhancement`}
-                                                    title={
-                                                        points < 1
-                                                            ? 'Enhancement requires at least 1 point'
-                                                            : 'Enhancement (1 enhancement point)'
-                                                    }
-                                                />
+                                                {regionValue >= 3 && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className={styles.skillEnhance}
+                                                        checked={enhanced && !enhanceDisabled}
+                                                        disabled={enhanceDisabled}
+                                                        onChange={(e) =>
+                                                            enhancementToggled(skill.scoreboardId, e.target.checked)
+                                                        }
+                                                        aria-label={`${skill.displayName} enhancement`}
+                                                        title={
+                                                            points < 1
+                                                                ? `${skill.displayName} Enhancement\nEnhancement requires at least 1 point`
+                                                                : `${skill.displayName} Enhancement\n${skill.simpleDescription}\n\nEnhancement (1 enhancement point)`
+                                                        }
+                                                    />
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -1357,6 +1440,12 @@ export default function BuildForm({
                                                         checked={points > i}
                                                         onChange={() => specSkillPointClicked(skill.scoreboardId, i)}
                                                         aria-label={`${skill.displayName} point ${i + 1}`}
+                                                        title={[
+                                                            skill.simpleDescription,
+                                                            cleanDescription((skill.descriptions || [])[i]),
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .join('\n\n')}
                                                     />
                                                 ))}
                                             </div>
@@ -1528,29 +1617,33 @@ export default function BuildForm({
                     );
                 })}
             </div>
-            <div className="row mb-1">
-                <div className="col-12">
-                    <CharmSelector
-                        update={updateCharms}
-                        translatableName={'builder.charms.select'}
-                        itemData={itemData}
-                        hideList
-                        charmNames={charms.map((c) => c.name)}
-                    ></CharmSelector>
-                </div>
-            </div>
-            <div className="row justify-content-center mb-1">
-                {charms.map((charm) => (
-                    <div
-                        className={`col-auto ${styles.builderCol}`}
-                        key={charm.name}
-                        onClick={() => removeCharm(charm)}
-                        style={{ cursor: 'pointer' }}
-                    >
-                        <CharmTile name={charm.name} item={charm}></CharmTile>
+            {regionValue >= 3 && (
+                <>
+                    <div className="row mb-1">
+                        <div className="col-12">
+                            <CharmSelector
+                                update={updateCharms}
+                                translatableName={'builder.charms.select'}
+                                itemData={itemData}
+                                hideList
+                                charmNames={charms.map((c) => c.name)}
+                            ></CharmSelector>
+                        </div>
                     </div>
-                ))}
-            </div>
+                    <div className="row justify-content-center mb-1">
+                        {charms.map((charm) => (
+                            <div
+                                className={`col-auto ${styles.builderCol}`}
+                                key={charm.name}
+                                onClick={() => removeCharm(charm)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <CharmTile name={charm.name} item={charm}></CharmTile>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
             <div className="row justify-content-center mb-1">
                 <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 py-1`}>
                     <h5 className="text-center fw-bold mb-0">

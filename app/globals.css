@@ -3,7 +3,7 @@
 :root {
     color-scheme: dark;
 
-    /* Height of the fixed platform nav; the odm header sticks below it. */
+    /* Height of the fixed platform nav; the sts header sticks below it. */
     --site-nav-h: 65px;
 
     /* Theme primitives (reusing existing palette values) */

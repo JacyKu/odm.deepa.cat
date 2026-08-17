@@ -25,8 +25,8 @@ export default function Footer() {
         <footer className={styles.footer}>
             <div className={styles.inner}>
                 <div className={styles.text}>
-                    Maintained by <b>JC</b>, developed by <b>Albin</b>, <b>FlamingoBike</b> and <b>Alecboo</b>
-                    <span className={styles.version}> · v{pkg.odm_version}</span>
+                    Forked by <b>JC</b>, originally developed by <b>Albin</b>, <b>FlamingoBike</b> and <b>Alecaboo</b>
+                    <span className={styles.version}> · v{pkg.sts_version}</span>
                 </div>
                 <div className={styles.links}>
                     <a
@@ -39,7 +39,7 @@ export default function Footer() {
                     </a>
                     <a
                         className={styles.link}
-                        href="https://github.com/JacyKu/odm.deepa.cat"
+                        href="https://github.com/JacyKu/sts.deepa.cat"
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="GitHub"

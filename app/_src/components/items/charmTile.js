@@ -2,6 +2,7 @@ import styles from '../../styles/Items.module.css';
 import CharmFormatter from '../../utils/items/charmFormatter';
 import TranslatableText from '../translatableText';
 import React from 'react';
+import { useLowResource } from '../lowResourceContext';
 
 function camelCase(str) {
     if (!str) return '';
@@ -69,6 +70,7 @@ function doesStyleExist(className) {
 export default function CharmTile(data) {
     const item = data.item;
     const [cssClass, setCssClass] = React.useState(getCharmSheetClass(item.name));
+    const { lowRes } = useLowResource();
 
     let formattedCharm = CharmFormatter.formatCharm(item.stats);
 
@@ -84,7 +86,11 @@ export default function CharmTile(data) {
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
             <div className={styles.imageIcon}>
-                <div className={['monumenta-charms', cssClass].join(' ')}></div>
+                {lowRes ? (
+                    <div className={styles.lowResIcon}></div>
+                ) : (
+                    <div className={['monumenta-charms', cssClass].join(' ')}></div>
+                )}
             </div>
             <span className={`${styles[camelCase(item.location)]} ${styles[camelCase(item.tier)]} ${styles.name}`}>
                 <a

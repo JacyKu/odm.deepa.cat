@@ -5,7 +5,8 @@ import LanguageSelector from './languageSelector';
 import TranslatableText from './translatableText';
 import styles from '../styles/Header.module.css';
 import Link from 'next/link';
-import { getOdmBase } from '../utils/base';
+import { getStsBase } from '../utils/base';
+import { useLowResource } from './lowResourceContext';
 
 function getPreferredTheme() {
     if (typeof window === 'undefined') return 'dark';
@@ -25,7 +26,8 @@ const FONT_LABELS = { ubuntu: 'Default', minecraft: 'Minecraft', default: 'Legac
 export default function Header() {
     const [theme, setTheme] = React.useState('dark');
     const [font, setFont] = React.useState('ubuntu');
-    const [base, setBase] = React.useState('/odm');
+    const [base, setBase] = React.useState('/sts');
+    const { lowRes, toggle: toggleLowRes } = useLowResource();
 
     React.useEffect(() => {
         const current = document.documentElement.dataset.theme;
@@ -47,7 +49,7 @@ export default function Header() {
             document.documentElement.dataset.font = storedFont;
             setFont(storedFont);
         }
-        setBase(getOdmBase());
+        setBase(getStsBase());
     }, []);
 
     const toggleTheme = () => {
@@ -96,6 +98,16 @@ export default function Header() {
                 </nav>
 
                 <div className={styles.right}>
+                    <button
+                        type="button"
+                        className={styles.themeToggle}
+                        onClick={toggleLowRes}
+                        aria-label="Toggle low resource mode"
+                        aria-pressed={lowRes}
+                        title={lowRes ? 'Low resource mode on: item images hidden' : 'Low resource mode off'}
+                    >
+                        {lowRes ? 'Low res' : 'HD'}
+                    </button>
                     <button
                         type="button"
                         className={styles.fontToggle}
