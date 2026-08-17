@@ -327,6 +327,9 @@ function cleanDescription(desc) {
             .replace(/\(\s*\)/g, '')
             .split('\n')
             .map((line) => line.replace(/^[\u25C6\u00B7\u2013\u2014\s]+/, '').trim())
+            // Key-press hint lines ("Trigger: key.use while Sneaking") are
+            // redundant next to the checkbox titles.
+            .filter((line) => !/^Trigger:/i.test(line))
             .filter(Boolean)
             .join('\n')
     );
@@ -1373,12 +1376,7 @@ export default function BuildForm({
                                         const points = skillPoints[skill.scoreboardId] || 0;
                                         const enhanced = Boolean(enhancements[skill.scoreboardId]);
                                         const enhanceDisabled = points < 1;
-                                        const tooltip = [
-                                            skill.simpleDescription,
-                                            cleanDescription((skill.descriptions || [])[points]),
-                                        ]
-                                            .filter(Boolean)
-                                            .join('\n\n');
+                                        const tooltip = [skill.simpleDescription].filter(Boolean).join('\n\n');
                                         return (
                                             <div key={skill.scoreboardId} className={styles.skillRow} title={tooltip}>
                                                 <span className={styles.skillName}>{skill.displayName}</span>
@@ -1393,10 +1391,7 @@ export default function BuildForm({
                                                             checked={points > i}
                                                             onChange={() => skillPointClicked(skill.scoreboardId, i)}
                                                             aria-label={`${skill.displayName} point ${i + 1}`}
-                                                            title={[
-                                                                skill.simpleDescription,
-                                                                cleanDescription((skill.descriptions || [])[i + 1]),
-                                                            ]
+                                                            title={[cleanDescription((skill.descriptions || [])[i])]
                                                                 .filter(Boolean)
                                                                 .join('\n\n')}
                                                         />
@@ -1415,7 +1410,13 @@ export default function BuildForm({
                                                         title={
                                                             points < 1
                                                                 ? `${skill.displayName} Enhancement\nEnhancement requires at least 1 point`
-                                                                : `${skill.displayName} Enhancement\n${skill.simpleDescription}\n\nEnhancement (1 enhancement point)`
+                                                                : [
+                                                                      cleanDescription(
+                                                                          (skill.descriptions || [])[maxPoints]
+                                                                      ),
+                                                                  ]
+                                                                      .filter(Boolean)
+                                                                      .join('\n\n')
                                                         }
                                                     />
                                                 )}
@@ -1452,12 +1453,7 @@ export default function BuildForm({
                                     const maxPoints = Math.max(0, (skill.descriptions || []).length);
                                     if (maxPoints === 0) return '';
                                     const points = specSkillPoints[skill.scoreboardId] || 0;
-                                    const tooltip = [
-                                        skill.simpleDescription,
-                                        cleanDescription((skill.descriptions || [])[Math.max(0, points - 1)]),
-                                    ]
-                                        .filter(Boolean)
-                                        .join('\n\n');
+                                    const tooltip = [skill.simpleDescription].filter(Boolean).join('\n\n');
                                     return (
                                         <div key={skill.scoreboardId} className={styles.skillRow} title={tooltip}>
                                             <span className={styles.skillName}>{skill.displayName}</span>
@@ -1472,10 +1468,7 @@ export default function BuildForm({
                                                         checked={points > i}
                                                         onChange={() => specSkillPointClicked(skill.scoreboardId, i)}
                                                         aria-label={`${skill.displayName} point ${i + 1}`}
-                                                        title={[
-                                                            skill.simpleDescription,
-                                                            cleanDescription((skill.descriptions || [])[i]),
-                                                        ]
+                                                        title={[cleanDescription((skill.descriptions || [])[i])]
                                                             .filter(Boolean)
                                                             .join('\n\n')}
                                                     />
