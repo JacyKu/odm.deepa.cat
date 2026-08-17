@@ -4,7 +4,6 @@ import path from 'path';
 import sharp from 'sharp';
 import { getItemData, getSkillsData } from '../../../_src/utils/itemsData';
 import { getLinkPreviewData, getEffectiveBuildName } from '../../../_src/utils/buildPreview';
-import { getMinecraftTextureKey } from '../../../_src/utils/items/minecraftFallback';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -73,7 +72,7 @@ async function getSpriteInfo() {
     }
 
     const mcPositions = {};
-    const mcRe = /\.minecraft-([\w-]+)\s*\{\s*background-position:\s*(-?\d+)px\s+(-?\d+)(?:px)?/g;
+    const mcRe = /\.minecraft-([\w-]+)\s*\{\s*background-position:\s*(-?\d+)px\s+(-?\d+)px/g;
     while ((match = mcRe.exec(mcCssRaw))) {
         mcPositions[match[1]] = { x: Math.abs(Number(match[2])), y: Math.abs(Number(match[3])) };
     }
@@ -114,7 +113,7 @@ async function itemSpriteDataUrl({ map, positions, sheet, mcPositions, mcSheet }
     if (pos) return cropSprite(sheet, pos);
     // Fall back to the vanilla Minecraft texture for the item's base material.
     if (baseItem) {
-        const mcKey = getMinecraftTextureKey(baseItem);
+        const mcKey = baseItem.replaceAll(' ', '-').replaceAll('_', '-').toLowerCase();
         const mcPos = mcPositions[mcKey];
         if (mcPos) return cropSprite(mcSheet, mcPos);
     }
@@ -149,27 +148,22 @@ function EquipmentGrid({ itemLines }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
             {rows.map((pair, ri) => (
-                <div key={ri} style={{ display: 'flex', marginTop: ri === 0 ? 6 : 8 }}>
+                <div key={ri} style={{ display: 'flex', marginTop: ri === 0 ? 10 : 14 }}>
                     {pair.map(({ label, name, img, ex, tier, masterwork }) => (
-                        <div key={label} style={{ display: 'flex', width: CELL_W, marginRight: 10 }}>
+                        <div key={label} style={{ display: 'flex', width: CELL_W, marginRight: 14 }}>
                             {img ? (
-                                <img src={img} width={56} height={56} style={{ imageRendering: 'pixelated' }} />
+                                <img src={img} width={64} height={64} style={{ imageRendering: 'pixelated' }} />
                             ) : (
-                                <div style={{ width: 56, height: 56, border: `1px solid ${BORDER}` }} />
+                                <div style={{ width: 64, height: 64, border: `1px solid ${BORDER}` }} />
                             )}
-                            <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 10 }}>
-                                <div style={{ fontSize: 11, letterSpacing: 1.5, color: DIM, fontWeight: 700 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 12 }}>
+                                <div style={{ fontSize: 12, letterSpacing: 1.5, color: DIM, fontWeight: 700 }}>
                                     {label.toUpperCase()}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', fontSize: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', fontSize: 17, marginTop: 1 }}>
                                     {ex && (
                                         <div
-                                            style={{
-                                                color: ACCENT,
-                                                fontWeight: 800,
-                                                letterSpacing: 1,
-                                                marginRight: 5,
-                                            }}
+                                            style={{ color: ACCENT, fontWeight: 800, letterSpacing: 1, marginRight: 6 }}
                                         >
                                             EX
                                         </div>
@@ -178,11 +172,11 @@ function EquipmentGrid({ itemLines }) {
                                         {name || 'None'}
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', marginTop: 3 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
                                     {name && tier && masterwork != null && (
                                         <>
                                             <MasterworkStars tier={tier} masterwork={masterwork} />
-                                            <div style={{ color: DIM, fontSize: 12, marginLeft: 7 }}>{tier}</div>
+                                            <div style={{ color: DIM, fontSize: 13, marginLeft: 8 }}>{tier}</div>
                                         </>
                                     )}
                                 </div>
@@ -208,11 +202,11 @@ function SkillChips({ skills, color, enhancedIds }) {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 4,
+                            gap: 5,
                             border: `1px solid ${BORDER}`,
                             background: PANEL,
-                            padding: '2px 7px',
-                            fontSize: 13,
+                            padding: '3px 9px',
+                            fontSize: 14,
                             color: chipColor,
                         }}
                     >
@@ -234,13 +228,13 @@ function SkillPanel({ data }) {
     const enhancedIds = new Set((data.enhancements || []).map((e) => (typeof e === 'string' ? e : e.id)));
     if (baseSkills.length === 0 && specSkills.length === 0) return null;
     const treeHeader = (label, showLegend) => (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700 }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 13, letterSpacing: 2, color: DIM, fontWeight: 700 }}>{label}</span>
             {showLegend && <span style={{ fontSize: 11, color: DIM }}>(* is enhanced)</span>}
         </div>
     );
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
             {baseSkills.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {treeHeader((data.className || 'CLASS').toUpperCase(), true)}
@@ -340,15 +334,19 @@ export async function GET(request) {
                 flexDirection: 'column',
                 background: '#0e0e14',
                 color: TEXT,
-                padding: '28px 40px',
+                padding: '40px 56px',
                 boxSizing: 'border-box',
                 ...fontStyle,
             }}
         >
-            <div style={{ fontSize: 30, fontWeight: 800, color: TEXT }}>{title}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <div style={{ fontSize: 16, letterSpacing: 4, color: DIM, fontWeight: 700 }}>Spare the Sympathy</div>
+            </div>
+
+            <div style={{ fontSize: 38, fontWeight: 800, marginTop: 6, color: TEXT }}>{title}</div>
 
             {hasBuildInfo && (
-                <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 18, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                     {className && <InfoItem label="CLASS" value={className} />}
                     {spec && <InfoItem label="SPEC" value={spec} />}
                     {totalSkillPoints > 0 && <InfoItem label="SKILL POINTS" value={String(totalSkillPoints)} />}
@@ -358,19 +356,19 @@ export async function GET(request) {
 
             <SkillPanel data={data} />
 
-            <div style={{ display: 'flex', gap: 18, marginTop: 'auto', paddingTop: 10 }}>
+            <div style={{ display: 'flex', gap: 28, marginTop: 'auto', paddingTop: 20 }}>
                 <div
                     style={{
                         flex: 1,
                         border: `2px solid ${BORDER}`,
                         background: PANEL,
-                        padding: 14,
+                        padding: 20,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 8,
+                        gap: 12,
                     }}
                 >
-                    <div style={{ fontSize: 13, letterSpacing: 2, color: DIM, fontWeight: 700 }}>EQUIPMENT</div>
+                    <div style={{ fontSize: 15, letterSpacing: 2, color: DIM, fontWeight: 700 }}>EQUIPMENT</div>
                     <EquipmentGrid itemLines={itemLines} />
                 </div>
 
@@ -380,62 +378,26 @@ export async function GET(request) {
                             width: 330,
                             border: `2px solid ${BORDER}`,
                             background: PANEL,
-                            padding: 14,
+                            padding: 20,
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 8,
+                            gap: 12,
                         }}
                     >
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                fontSize: 14,
-                                letterSpacing: 2,
-                                color: DIM,
-                                fontWeight: 700,
-                            }}
-                        >
-                            <span>{`CHARMS ${String(data.charms.totalPower)}/12`}</span>
-                            <svg width={12} height={12} viewBox="0 0 576 512">
-                                <path d={STAR_PATH} fill={STAR} />
-                            </svg>
+                        <div style={{ fontSize: 15, letterSpacing: 2, color: DIM, fontWeight: 700, marginBottom: 2 }}>
+                            {`CHARMS ${String(data.charms.totalPower)}/12★`}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {charmNames.map((c, i) => (
-                                <div
-                                    key={i}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        marginBottom: 3,
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            fontSize: 13,
-                                            color: TEXT,
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            flex: 1,
-                                            minWidth: 0,
-                                        }}
-                                    >
-                                        {c.name}
-                                    </div>
+                        {charmNames.map((c, i) => (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ fontSize: 16, color: TEXT }}>{c.name}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', marginTop: 3 }}>
+                                    {c.power != null && <Stars filled={c.power} max={c.power} size={10} />}
                                     {c.power != null && (
-                                        <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 2 }}>
-                                            <Stars filled={c.power} max={c.power} size={9} />
-                                            <div style={{ color: DIM, fontSize: 11, marginLeft: 4 }}>
-                                                {String(c.power)}
-                                            </div>
-                                        </div>
+                                        <div style={{ color: DIM, fontSize: 12, marginLeft: 8 }}>{String(c.power)}</div>
                                     )}
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

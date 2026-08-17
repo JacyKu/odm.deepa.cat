@@ -3,7 +3,6 @@ import styles from '../../styles/Items.module.css';
 import React from 'react';
 import TranslatableText from '../translatableText';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
-import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
 import { useLowResource } from '../lowResourceContext';
 
@@ -178,7 +177,7 @@ export default function MasterworkableItemTile(data) {
         } else {
             // Otherwise, default to a minecraft texture.
             setBaseBackgroundClass('minecraft');
-            setCssClass(`minecraft-${getMinecraftTextureKey(activeItem['base_item'])}`);
+            setCssClass(`minecraft-${activeItem['base_item'].replaceAll(' ', '-').replaceAll('_', '-').toLowerCase()}`);
         }
 
         const stars = [star1, star2, star3, star4];

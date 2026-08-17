@@ -732,28 +732,22 @@ export default function BuildForm({
             // Skills that were removed from the API: drop their points from the
             // form so the counters stay honest (the original URL is untouched
             // until the user edits and the link is rewritten).
-            // Only filter when the skills data is already loaded: parentLoaded
-            // fires before the /api/v1/skills fetch resolves, and filtering
-            // against an empty skill set would wipe every loaded point. The
-            // cleanup effect below re-filters once the data arrives.
             const loadedClass = classPart?.split('cl=')[1] || null;
             const loadedSpec = spPart ? decodeURIComponent(spPart.split('sp=')[1]) : null;
             const classData = skillsData?.classes?.find(
                 (c) => (c.className || '').toLowerCase() == (loadedClass || '').toLowerCase()
             );
-            if (skillsData && classData) {
-                const knownSkillIds = new Set((classData.skills || []).map((s) => s.scoreboardId));
-                const specData = loadedSpec ? classData.specs?.find((s) => s.specName == loadedSpec) : null;
-                const knownSpecSkillIds = new Set((specData?.specSkills || []).map((s) => s.scoreboardId));
-                loadedSkillPoints = Object.fromEntries(
-                    Object.entries(loadedSkillPoints).filter(([id]) => knownSkillIds.has(id))
-                );
-                loadedSpecPoints = Object.fromEntries(
-                    Object.entries(loadedSpecPoints).filter(([id]) => knownSpecSkillIds.has(id))
-                );
-                setSkillPoints(loadedSkillPoints);
-                setSpecSkillPoints(loadedSpecPoints);
-            }
+            const knownSkillIds = new Set((classData?.skills || []).map((s) => s.scoreboardId));
+            const specData = loadedSpec ? classData?.specs?.find((s) => s.specName == loadedSpec) : null;
+            const knownSpecSkillIds = new Set((specData?.specSkills || []).map((s) => s.scoreboardId));
+            loadedSkillPoints = Object.fromEntries(
+                Object.entries(loadedSkillPoints).filter(([id]) => knownSkillIds.has(id))
+            );
+            loadedSpecPoints = Object.fromEntries(
+                Object.entries(loadedSpecPoints).filter(([id]) => knownSpecSkillIds.has(id))
+            );
+            setSkillPoints(loadedSkillPoints);
+            setSpecSkillPoints(loadedSpecPoints);
 
             refreshClassBuffs(loadedSkillPoints, loadedSpecPoints, loadedEnhancements);
             // extra stat inputs (health/tenacity/vitality/vigor/focus/perspicacity/region)
@@ -793,36 +787,6 @@ export default function BuildForm({
             }
         }
     }, [parentLoaded]);
-
-    // Once the skills data is known (it loads async, after parentLoaded), drop
-    // points for skills that no longer exist in the API. Only removes unknown
-    // skills, so it never clobbers user edits or loaded points for known skills.
-    React.useEffect(() => {
-        if (!skillsData || !Array.isArray(skillsData.classes) || gameClass === 'none') return;
-        const cls = skillsData.classes.find((c) => (c.className || '').toLowerCase() === gameClass);
-        if (!cls) return;
-
-        const knownSkillIds = new Set((cls.skills || []).map((s) => s.scoreboardId));
-        const filteredSkills = Object.fromEntries(Object.entries(skillPoints).filter(([id]) => knownSkillIds.has(id)));
-        let changed = Object.keys(filteredSkills).length !== Object.keys(skillPoints).length;
-
-        let nextSpecPoints = specSkillPoints;
-        const specData = spec ? cls.specs?.find((s) => s.specName === spec) : null;
-        const knownSpecSkillIds = new Set((specData?.specSkills || []).map((s) => s.scoreboardId));
-        const filteredSpecPoints = Object.fromEntries(
-            Object.entries(specSkillPoints).filter(([id]) => knownSpecSkillIds.has(id))
-        );
-        if (Object.keys(filteredSpecPoints).length !== Object.keys(specSkillPoints).length) {
-            nextSpecPoints = filteredSpecPoints;
-            changed = true;
-        }
-
-        if (changed) {
-            setSkillPoints(filteredSkills);
-            setSpecSkillPoints(nextSpecPoints);
-            refreshClassBuffs(filteredSkills, nextSpecPoints, enhancements);
-        }
-    }, [skillsData, gameClass, spec, skillPoints, specSkillPoints, enhancements]);
 
     const formRef = React.useRef();
     const itemRefs = {
@@ -1372,7 +1336,9 @@ export default function BuildForm({
                                         if (maxPoints === 0) return '';
                                         const points = skillPoints[skill.scoreboardId] || 0;
                                         const enhanced = Boolean(enhancements[skill.scoreboardId]);
-                                        const enhanceDisabled = points < 1;
+                                        const enhanceDisabled =
+                                            points < 1 ||
+                                            (!enhanced && Object.keys(enhancements).length >= MAX_ENHANCEMENT_POINTS);
                                         const tooltip = [
                                             skill.simpleDescription,
                                             cleanDescription((skill.descriptions || [])[points]),
@@ -1449,6 +1415,8 @@ export default function BuildForm({
                             </div>
                             <div className={styles.skillsGrid}>
                                 {currentSpecSkills.map((skill) => {
+                                    // Spec skills have [Lv.1, Lv.2] descriptions (no level-0 entry),
+                                    // so the max is the description count, not count - 1.
                                     const maxPoints = Math.max(0, (skill.descriptions || []).length);
                                     if (maxPoints === 0) return '';
                                     const points = specSkillPoints[skill.scoreboardId] || 0;

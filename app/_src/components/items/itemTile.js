@@ -3,7 +3,6 @@ import styles from '../../styles/Items.module.css';
 import TranslatableText from '../translatableText';
 import React from 'react';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
-import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
 import { useLowResource } from '../lowResourceContext';
 
@@ -92,7 +91,7 @@ export default function ItemTile(data) {
 
         // Otherwise, default to a minecraft texture.
         setBaseBackgroundClass('minecraft');
-        setCssClass(`minecraft-${getMinecraftTextureKey(item['base_item'])}`);
+        setCssClass(`minecraft-${item['base_item'].replaceAll(' ', '-').replaceAll('_', '-').toLowerCase()}`);
     }, [item, spriteMap]);
 
     return (
