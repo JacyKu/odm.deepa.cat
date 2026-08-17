@@ -1372,9 +1372,7 @@ export default function BuildForm({
                                         if (maxPoints === 0) return '';
                                         const points = skillPoints[skill.scoreboardId] || 0;
                                         const enhanced = Boolean(enhancements[skill.scoreboardId]);
-                                        const enhanceDisabled =
-                                            points < 1 ||
-                                            (!enhanced && Object.keys(enhancements).length >= MAX_ENHANCEMENT_POINTS);
+                                        const enhanceDisabled = points < 1;
                                         const tooltip = [
                                             skill.simpleDescription,
                                             cleanDescription((skill.descriptions || [])[points]),
@@ -1451,8 +1449,6 @@ export default function BuildForm({
                             </div>
                             <div className={styles.skillsGrid}>
                                 {currentSpecSkills.map((skill) => {
-                                    // Spec skills have [Lv.1, Lv.2] descriptions (no level-0 entry),
-                                    // so the max is the description count, not count - 1.
                                     const maxPoints = Math.max(0, (skill.descriptions || []).length);
                                     if (maxPoints === 0) return '';
                                     const points = specSkillPoints[skill.scoreboardId] || 0;
