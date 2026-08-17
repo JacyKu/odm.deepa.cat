@@ -1,7 +1,7 @@
 {
   "name": "sts",
   "version": "1.0.0",
-  "sts_version": "1.0.0",
+  "sts_version": "1.0.0-beta_public",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
@@ -10,7 +10,8 @@
     "update:items": "node scripts/update-items.mjs",
     "update:spritesheet": "node scripts/spritesheetmaker/index.js",
     "update:minecraft-sheet": "node scripts/update-minecraft-sheet.mjs",
-    "embed:debug": "node scripts/embed-debug.mjs"
+    "embed:debug": "node scripts/embed-debug.mjs",
+    "update:cz-data": "node scripts/update-cz-data.mjs"
   },
   "dependencies": {
     "@deepa/shared": "*",
