@@ -4,6 +4,7 @@ import path from 'path';
 import sharp from 'sharp';
 import { getItemData, getSkillsData } from '../../../_src/utils/itemsData';
 import { getLinkPreviewData, getEffectiveBuildName } from '../../../_src/utils/buildPreview';
+import { getMinecraftTextureKey } from '../../../_src/utils/items/minecraftFallback';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,7 +73,7 @@ async function getSpriteInfo() {
     }
 
     const mcPositions = {};
-    const mcRe = /\.minecraft-([\w-]+)\s*\{\s*background-position:\s*(-?\d+)px\s+(-?\d+)px/g;
+    const mcRe = /\.minecraft-([\w-]+)\s*\{\s*background-position:\s*(-?\d+)px\s+(-?\d+)(?:px)?/g;
     while ((match = mcRe.exec(mcCssRaw))) {
         mcPositions[match[1]] = { x: Math.abs(Number(match[2])), y: Math.abs(Number(match[3])) };
     }
@@ -113,7 +114,7 @@ async function itemSpriteDataUrl({ map, positions, sheet, mcPositions, mcSheet }
     if (pos) return cropSprite(sheet, pos);
     // Fall back to the vanilla Minecraft texture for the item's base material.
     if (baseItem) {
-        const mcKey = baseItem.replaceAll(' ', '-').replaceAll('_', '-').toLowerCase();
+        const mcKey = getMinecraftTextureKey(baseItem);
         const mcPos = mcPositions[mcKey];
         if (mcPos) return cropSprite(mcSheet, mcPos);
     }
@@ -381,23 +382,59 @@ export async function GET(request) {
                             padding: 20,
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 12,
+                            gap: 10,
                         }}
                     >
-                        <div style={{ fontSize: 15, letterSpacing: 2, color: DIM, fontWeight: 700, marginBottom: 2 }}>
-                            {`CHARMS ${String(data.charms.totalPower)}/12★`}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                fontSize: 15,
+                                letterSpacing: 2,
+                                color: DIM,
+                                fontWeight: 700,
+                                marginBottom: 2,
+                            }}
+                        >
+                            <span>{`CHARMS ${String(data.charms.totalPower)}/12`}</span>
+                            <svg width={13} height={13} viewBox="0 0 576 512">
+                                <path d={STAR_PATH} fill={STAR} />
+                            </svg>
                         </div>
-                        {charmNames.map((c, i) => (
-                            <div key={i} style={{ display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ fontSize: 16, color: TEXT }}>{c.name}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', marginTop: 3 }}>
-                                    {c.power != null && <Stars filled={c.power} max={c.power} size={10} />}
-                                    {c.power != null && (
-                                        <div style={{ color: DIM, fontSize: 12, marginLeft: 8 }}>{String(c.power)}</div>
-                                    )}
+                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                            {charmNames.map((c, i) => (
+                                <div
+                                    key={i}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        width: 134,
+                                        margin: '0 10px 8px 0',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: 13,
+                                            color: TEXT,
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                        }}
+                                    >
+                                        {c.name}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
+                                        {c.power != null && <Stars filled={c.power} max={c.power} size={9} />}
+                                        {c.power != null && (
+                                            <div style={{ color: DIM, fontSize: 11, marginLeft: 6 }}>
+                                                {String(c.power)}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

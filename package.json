@@ -7,7 +7,10 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 6678",
-    "update:items": "node scripts/update-items.mjs"
+    "update:items": "node scripts/update-items.mjs",
+    "update:spritesheet": "node scripts/spritesheetmaker/index.js",
+    "update:minecraft-sheet": "node scripts/update-minecraft-sheet.mjs",
+    "embed:debug": "node scripts/embed-debug.mjs"
   },
   "dependencies": {
     "@deepa/shared": "*",
