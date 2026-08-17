@@ -149,22 +149,27 @@ function EquipmentGrid({ itemLines }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
             {rows.map((pair, ri) => (
-                <div key={ri} style={{ display: 'flex', marginTop: ri === 0 ? 10 : 14 }}>
+                <div key={ri} style={{ display: 'flex', marginTop: ri === 0 ? 6 : 8 }}>
                     {pair.map(({ label, name, img, ex, tier, masterwork }) => (
-                        <div key={label} style={{ display: 'flex', width: CELL_W, marginRight: 14 }}>
+                        <div key={label} style={{ display: 'flex', width: CELL_W, marginRight: 10 }}>
                             {img ? (
-                                <img src={img} width={64} height={64} style={{ imageRendering: 'pixelated' }} />
+                                <img src={img} width={56} height={56} style={{ imageRendering: 'pixelated' }} />
                             ) : (
-                                <div style={{ width: 64, height: 64, border: `1px solid ${BORDER}` }} />
+                                <div style={{ width: 56, height: 56, border: `1px solid ${BORDER}` }} />
                             )}
-                            <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 12 }}>
-                                <div style={{ fontSize: 12, letterSpacing: 1.5, color: DIM, fontWeight: 700 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 10 }}>
+                                <div style={{ fontSize: 11, letterSpacing: 1.5, color: DIM, fontWeight: 700 }}>
                                     {label.toUpperCase()}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', fontSize: 17, marginTop: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', fontSize: 16 }}>
                                     {ex && (
                                         <div
-                                            style={{ color: ACCENT, fontWeight: 800, letterSpacing: 1, marginRight: 6 }}
+                                            style={{
+                                                color: ACCENT,
+                                                fontWeight: 800,
+                                                letterSpacing: 1,
+                                                marginRight: 5,
+                                            }}
                                         >
                                             EX
                                         </div>
@@ -173,11 +178,11 @@ function EquipmentGrid({ itemLines }) {
                                         {name || 'None'}
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', marginTop: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginTop: 3 }}>
                                     {name && tier && masterwork != null && (
                                         <>
                                             <MasterworkStars tier={tier} masterwork={masterwork} />
-                                            <div style={{ color: DIM, fontSize: 13, marginLeft: 8 }}>{tier}</div>
+                                            <div style={{ color: DIM, fontSize: 12, marginLeft: 7 }}>{tier}</div>
                                         </>
                                     )}
                                 </div>
@@ -203,11 +208,11 @@ function SkillChips({ skills, color, enhancedIds }) {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 5,
+                            gap: 4,
                             border: `1px solid ${BORDER}`,
                             background: PANEL,
-                            padding: '3px 9px',
-                            fontSize: 14,
+                            padding: '2px 7px',
+                            fontSize: 13,
                             color: chipColor,
                         }}
                     >
@@ -229,13 +234,13 @@ function SkillPanel({ data }) {
     const enhancedIds = new Set((data.enhancements || []).map((e) => (typeof e === 'string' ? e : e.id)));
     if (baseSkills.length === 0 && specSkills.length === 0) return null;
     const treeHeader = (label, showLegend) => (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 13, letterSpacing: 2, color: DIM, fontWeight: 700 }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700 }}>{label}</span>
             {showLegend && <span style={{ fontSize: 11, color: DIM }}>(* is enhanced)</span>}
         </div>
     );
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
             {baseSkills.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {treeHeader((data.className || 'CLASS').toUpperCase(), true)}
@@ -335,19 +340,15 @@ export async function GET(request) {
                 flexDirection: 'column',
                 background: '#0e0e14',
                 color: TEXT,
-                padding: '40px 56px',
+                padding: '28px 40px',
                 boxSizing: 'border-box',
                 ...fontStyle,
             }}
         >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <div style={{ fontSize: 16, letterSpacing: 4, color: DIM, fontWeight: 700 }}>Spare the Sympathy</div>
-            </div>
-
-            <div style={{ fontSize: 38, fontWeight: 800, marginTop: 6, color: TEXT }}>{title}</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: TEXT }}>{title}</div>
 
             {hasBuildInfo && (
-                <div style={{ display: 'flex', gap: 18, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     {className && <InfoItem label="CLASS" value={className} />}
                     {spec && <InfoItem label="SPEC" value={spec} />}
                     {totalSkillPoints > 0 && <InfoItem label="SKILL POINTS" value={String(totalSkillPoints)} />}
@@ -357,19 +358,19 @@ export async function GET(request) {
 
             <SkillPanel data={data} />
 
-            <div style={{ display: 'flex', gap: 28, marginTop: 'auto', paddingTop: 20 }}>
+            <div style={{ display: 'flex', gap: 18, marginTop: 'auto', paddingTop: 10 }}>
                 <div
                     style={{
                         flex: 1,
                         border: `2px solid ${BORDER}`,
                         background: PANEL,
-                        padding: 20,
+                        padding: 14,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 12,
+                        gap: 8,
                     }}
                 >
-                    <div style={{ fontSize: 15, letterSpacing: 2, color: DIM, fontWeight: 700 }}>EQUIPMENT</div>
+                    <div style={{ fontSize: 13, letterSpacing: 2, color: DIM, fontWeight: 700 }}>EQUIPMENT</div>
                     <EquipmentGrid itemLines={itemLines} />
                 </div>
 
@@ -379,10 +380,10 @@ export async function GET(request) {
                             width: 330,
                             border: `2px solid ${BORDER}`,
                             background: PANEL,
-                            padding: 20,
+                            padding: 14,
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 10,
+                            gap: 8,
                         }}
                     >
                         <div
@@ -390,27 +391,25 @@ export async function GET(request) {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 6,
-                                fontSize: 15,
+                                fontSize: 14,
                                 letterSpacing: 2,
                                 color: DIM,
                                 fontWeight: 700,
-                                marginBottom: 2,
                             }}
                         >
                             <span>{`CHARMS ${String(data.charms.totalPower)}/12`}</span>
-                            <svg width={13} height={13} viewBox="0 0 576 512">
+                            <svg width={12} height={12} viewBox="0 0 576 512">
                                 <path d={STAR_PATH} fill={STAR} />
                             </svg>
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {charmNames.map((c, i) => (
                                 <div
                                     key={i}
                                     style={{
                                         display: 'flex',
-                                        flexDirection: 'column',
-                                        width: 134,
-                                        margin: '0 10px 8px 0',
+                                        alignItems: 'center',
+                                        marginBottom: 3,
                                     }}
                                 >
                                     <div
@@ -420,18 +419,20 @@ export async function GET(request) {
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
+                                            flex: 1,
+                                            minWidth: 0,
                                         }}
                                     >
                                         {c.name}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-                                        {c.power != null && <Stars filled={c.power} max={c.power} size={9} />}
-                                        {c.power != null && (
-                                            <div style={{ color: DIM, fontSize: 11, marginLeft: 6 }}>
+                                    {c.power != null && (
+                                        <div style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 2 }}>
+                                            <Stars filled={c.power} max={c.power} size={9} />
+                                            <div style={{ color: DIM, fontSize: 11, marginLeft: 4 }}>
                                                 {String(c.power)}
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

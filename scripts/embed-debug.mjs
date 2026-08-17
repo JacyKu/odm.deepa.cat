@@ -15,7 +15,6 @@ function charmParam(names) {
     return encodeURIComponent(CharmShortener.shortenCharmList(objects));
 }
 
-// Pick charm names until their combined power hits at least 11 (out of 12).
 function maxCharms() {
     const names = [];
     let power = 0;
@@ -99,6 +98,12 @@ const builds = [
             ].join('&')
         ),
         note: 'charm loadout near the 12-power cap',
+    },
+    {
+        // Real saved build from https://sts.deepa.cat/b/TRK5Umlk (R3 Harbinger, 7 charms / 10★).
+        name: 'trk5umlk',
+        build: 'v1_Alm309_xFT7TssP8C710IBp2GdZ5k0RZQGhSZXMtdG9uZ3VlLTItQSxNeWMtX1NlcnVtLTEtQSxPdmUtX0ZsYXNrLTItQSxIZXItYWxfT3JlLTEtQSxBYnktX0NvcmFsLTEtQSxCb3QtZmluaXR5LTItQSxMZXMtZl9NYW5hLTEtTQAJQWxjaGVtaXN0CA9HcnVlc29tZUFsY2hlbXkCDUJydXRhbEFsY2hlbXkCDElyb25UaW5jdHVyZQIKQWxjaGVtaWNhbAIQVm9sYXRpbGVSZWFjdGlvbgIPVW5zdGFibGVBbWFsZ2FtAhBFbmVyZ2l6aW5nRWxpeGlyAgZCZXpvYXICZAAAAAAAAwlIYXJiaW5nZXIDDVNjb3JjaGVkRWFydGgCBVRhYm9vAghFc290ZXJpYwIDCkFsY2hlbWljYWwNQnJ1dGFsQWxjaGVteRBWb2xhdGlsZVJlYWN0aW9u',
+        note: 'real saved build (b/TRK5Umlk): Alchemist/Harbinger, 7 charms',
     },
 ];
 
