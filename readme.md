@@ -15,7 +15,7 @@ Please report issues or feature requests on [Github](https://github.com/JacyKu/s
     > Public build database where players can share and save their builds, optionally having their own build saves.
 
 - Discord Application.
-    > Quickly access a build you created or share items you like. Implentation after a Build share/save system.
+    > Quickly access a build you created or share items you like. Implementatiom after a Build share/save system.
 ---
 
 This project was refactored and rewritten from [Alecaboo](https://github.com/Alecaboo) their [Ode to Misery](https://github.com/Alecaboo/ohthemisery), which was originally made by [Albin](https://github.com/albarv340) and [FlamingoBike](https://github.com/FlamingoBike) their project [Oh the Misery](https://github.com/albarv340/ohthemisery).
