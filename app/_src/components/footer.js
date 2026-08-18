@@ -2,6 +2,7 @@
 
 import React from 'react';
 import styles from '../styles/Footer.module.css';
+import LanguageSelector from './languageSelector';
 import pkg from '../../../package.json';
 
 function GitHubIcon() {
@@ -29,6 +30,7 @@ export default function Footer() {
                     <span className={styles.version}> · v{pkg.sts_version}</span>
                 </div>
                 <div className={styles.links}>
+                    <LanguageSelector className={styles.languageSelect} />
                     <a
                         className={styles.textLink}
                         href="https://crowdin.com/project/ohthemisery"

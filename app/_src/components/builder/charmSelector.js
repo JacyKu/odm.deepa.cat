@@ -32,12 +32,26 @@ function getAbilityTextMap(itemData) {
     return map;
 }
 
+// The charm list carries display names, but the item data is keyed by
+// full item keys (e.g. "Event Horizon (orange_glazed_terracotta)"), which
+// differ from the display name for some charms. Resolve either form.
+export function resolveCharmKey(itemData, nameOrKey) {
+    if (!nameOrKey) return null;
+    if (itemData[nameOrKey]) return nameOrKey;
+    return (
+        Object.keys(itemData).find((key) => itemData[key].type === 'Charm' && itemData[key].name === nameOrKey) || null
+    );
+}
+
 export default function CharmSelector({ update, translatableName, itemData, hideList, charmNames }) {
     const inputRef = React.useRef();
 
     const maxPower = 12;
     const entries = charmNames || [];
-    const usedPower = entries.reduce((sum, name) => sum + (itemData[name]?.power || 0), 0);
+    const usedPower = entries.reduce((sum, name) => {
+        const key = resolveCharmKey(itemData, name);
+        return sum + (key ? itemData[key].power || 0 : 0);
+    }, 0);
 
     const abilityTextMap = getAbilityTextMap(itemData);
     const charmFilterOption = (option, input) => {
@@ -59,8 +73,8 @@ export default function CharmSelector({ update, translatableName, itemData, hide
         if (
             actualName &&
             itemData[actualName].type == 'Charm' &&
-            !entries.find((name) => name.toLowerCase() == input.toLowerCase()) &&
-            usedPower + itemData[actualName].power <= maxPower
+            !entries.find((name) => (itemData[name] || resolveCharmKey(itemData, name)) == actualName) &&
+            usedPower + (itemData[actualName].power || 0) <= maxPower
         ) {
             processUpdate([...entries, actualName]);
         }
@@ -92,15 +106,23 @@ export default function CharmSelector({ update, translatableName, itemData, hide
             </div>
             {!hideList && (
                 <div className={styles.listSelectorList}>
-                    {entries.map((entry, index) => (
-                        <span
-                            key={index}
-                            className={styles.entry}
-                            onClick={() => processUpdate(entries.filter((_, i) => i != index))}
-                        >
-                            <CharmTile key={entry} name={itemData[entry].name} item={itemData[entry]}></CharmTile>
-                        </span>
-                    ))}
+                    {entries.map((entry, index) => {
+                        const entryKey = resolveCharmKey(itemData, entry);
+                        if (!entryKey) return null;
+                        return (
+                            <span
+                                key={index}
+                                className={styles.entry}
+                                onClick={() => processUpdate(entries.filter((_, i) => i != index))}
+                            >
+                                <CharmTile
+                                    key={entryKey}
+                                    name={itemData[entryKey].name}
+                                    item={itemData[entryKey]}
+                                ></CharmTile>
+                            </span>
+                        );
+                    })}
                 </div>
             )}
         </div>

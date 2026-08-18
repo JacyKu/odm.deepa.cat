@@ -9,7 +9,6 @@ import SearchForm from './items/searchForm';
 import React from 'react';
 import InfiniteScroll from './infiniteScroll';
 import TranslatableText from './translatableText';
-import { HideLoreProvider } from './items/hideLoreContext';
 
 function extractFilterValues(data, baseKey) {
     return Object.keys(data)
@@ -353,59 +352,51 @@ export default function ItemsPage({ itemData }) {
     }
 
     return (
-        <HideLoreProvider>
-            <div className={styles.container}>
-                <main className={styles.main}>
-                    <h1>Monumenta Items</h1>
-                    <SearchForm update={handleChange} itemData={itemData}></SearchForm>
-                    <h4 className={styles.resultCount}>
-                        <TranslatableText identifier="items.searchForm.itemsFound"></TranslatableText>{' '}
-                        {relevantItems.length}
-                    </h4>
-                    {relevantItems.length === 0 ? (
-                        <div className={styles.emptyState}>
-                            <b>No items found.</b>
-                            <br />
-                            Try clearing some filters or searching for something else.
-                        </div>
-                    ) : (
-                        <InfiniteScroll
-                            className={styles.itemsContainer}
-                            dataLength={itemsToShow}
-                            next={showMoreItems}
-                            hasMore={true}
-                            loader={<h4>No items found</h4>}
-                        >
-                            {relevantItems.slice(0, itemsToShow).map((name) => {
-                                if (typeof name == 'object') {
-                                    return (
-                                        <MasterworkableItemTile
-                                            key={`${name[0].name}-${name[0].masterwork}`}
-                                            name={name[0].name}
-                                            item={name}
-                                        ></MasterworkableItemTile>
-                                    );
-                                }
-                                if (itemData[name].type == 'Charm') {
-                                    return (
-                                        <CharmTile
-                                            key={name}
-                                            name={itemData[name].name}
-                                            item={itemData[name]}
-                                        ></CharmTile>
-                                    );
-                                }
-                                if (itemData[name].type == 'Consumable' && itemData[name].effects != undefined) {
-                                    return (
-                                        <ConsumableTile key={name} name={name} item={itemData[name]}></ConsumableTile>
-                                    );
-                                }
-                                return <ItemTile key={name} name={name} item={itemData[name]}></ItemTile>;
-                            })}
-                        </InfiniteScroll>
-                    )}
-                </main>
-            </div>
-        </HideLoreProvider>
+        <div className={styles.container}>
+            <main className={styles.main}>
+                <h1>Monumenta Items</h1>
+                <SearchForm update={handleChange} itemData={itemData}></SearchForm>
+                <h4 className={styles.resultCount}>
+                    <TranslatableText identifier="items.searchForm.itemsFound"></TranslatableText>{' '}
+                    {relevantItems.length}
+                </h4>
+                {relevantItems.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        <b>No items found.</b>
+                        <br />
+                        Try clearing some filters or searching for something else.
+                    </div>
+                ) : (
+                    <InfiniteScroll
+                        className={styles.itemsContainer}
+                        dataLength={itemsToShow}
+                        next={showMoreItems}
+                        hasMore={true}
+                        loader={<h4>No items found</h4>}
+                    >
+                        {relevantItems.slice(0, itemsToShow).map((name) => {
+                            if (typeof name == 'object') {
+                                return (
+                                    <MasterworkableItemTile
+                                        key={`${name[0].name}-${name[0].masterwork}`}
+                                        name={name[0].name}
+                                        item={name}
+                                    ></MasterworkableItemTile>
+                                );
+                            }
+                            if (itemData[name].type == 'Charm') {
+                                return (
+                                    <CharmTile key={name} name={itemData[name].name} item={itemData[name]}></CharmTile>
+                                );
+                            }
+                            if (itemData[name].type == 'Consumable' && itemData[name].effects != undefined) {
+                                return <ConsumableTile key={name} name={name} item={itemData[name]}></ConsumableTile>;
+                            }
+                            return <ItemTile key={name} name={name} item={itemData[name]}></ItemTile>;
+                        })}
+                    </InfiniteScroll>
+                )}
+            </main>
+        </div>
     );
 }

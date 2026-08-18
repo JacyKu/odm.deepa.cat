@@ -2,7 +2,6 @@ import React from 'react';
 import styles from '../../styles/SearchForm.module.css';
 import SelectWithTriggers from './selectWithTriggers';
 import SelectInput from './selectInput';
-import LoreToggle from './loreToggle';
 import extras from '../../data/extras.json';
 
 export default function SearchForm({ update, itemData }) {
@@ -271,7 +270,6 @@ export default function SearchForm({ update, itemData }) {
                 <label className={styles.toggleLabel}>
                     <input type="checkbox" name="hideNonGear" onChange={sendUpdate} /> Hide non-gear items
                 </label>
-                <LoreToggle />
             </div>
         </form>
     );

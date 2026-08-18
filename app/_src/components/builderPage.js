@@ -3,7 +3,6 @@
 import React from 'react';
 import BuildForm from './builder/buildForm';
 import styles from '../styles/Items.module.css';
-import { HideLoreProvider } from './items/hideLoreContext';
 
 export default function BuilderPage({ build, itemData }) {
     const [builderHeaderText, setBuilderHeaderText] = React.useState('Monumenta Builder');
@@ -32,22 +31,20 @@ export default function BuilderPage({ build, itemData }) {
     }, [builderHeaderText, parentLoaded]);
 
     return (
-        <HideLoreProvider>
-            <div className="container-fluid">
-                <main className={styles.builderPage}>
-                    <BuildForm
-                        update={change}
-                        build={build}
-                        parentLoaded={parentLoaded}
-                        itemData={itemData}
-                        itemsToDisplay={itemsToDisplay}
-                        buildName={builderHeaderText}
-                        setBuildName={setBuilderHeaderText}
-                        updateLink={updateLink}
-                        setUpdateLink={setUpdateLink}
-                    ></BuildForm>
-                </main>
-            </div>
-        </HideLoreProvider>
+        <div className="container-fluid">
+            <main className={styles.builderPage}>
+                <BuildForm
+                    update={change}
+                    build={build}
+                    parentLoaded={parentLoaded}
+                    itemData={itemData}
+                    itemsToDisplay={itemsToDisplay}
+                    buildName={builderHeaderText}
+                    setBuildName={setBuilderHeaderText}
+                    updateLink={updateLink}
+                    setUpdateLink={setUpdateLink}
+                ></BuildForm>
+            </main>
+        </div>
     );
 }

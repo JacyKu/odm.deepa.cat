@@ -15,7 +15,7 @@ import { getStsBase } from '../../utils/base';
 import Stats from '../../utils/builder/stats';
 import TranslatableText from '../translatableText';
 import ListSelector from './listSelector';
-import CharmSelector from './charmSelector';
+import CharmSelector, { resolveCharmKey } from './charmSelector';
 import CharmShortener from '../../utils/builder/charmShortener';
 import { decodeBuildParam, encodeBuildParam, normalizeBuildParam } from '../../utils/builder/buildUrlCodec';
 
@@ -1258,7 +1258,13 @@ export default function BuildForm({
     }
 
     function updateCharms(charmNames) {
-        let charmData = charmNames.map((name) => itemData[name]);
+        let charmData = charmNames
+            .map((name) => {
+                if (itemData[name]) return itemData[name];
+                const key = resolveCharmKey(itemData, name);
+                return key ? itemData[key] : null;
+            })
+            .filter(Boolean);
         setCharms(charmData);
         const token = makeBuildString(charmData);
         syncUrl(getStsBase() + '/builder/' + token);

@@ -106,7 +106,6 @@ export default function CharmTile(data) {
             </span>
             <span className={styles.infoText}>
                 <TranslatableText identifier="items.type.charm"></TranslatableText>
-                {` - ${item['base_item']} `}
             </span>
             {item['original_item'] ? (
                 <span className={styles.infoText}>{`Skin for ${item['original_item']} `}</span>

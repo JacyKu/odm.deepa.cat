@@ -1,33 +1,20 @@
 'use client';
 
 import React from 'react';
-import { getApps } from './apps.js';
 import styles from './SiteNav.module.css';
 
-// The top site nav shared by the platform and STS apps. App links come from
-// the shared app registry so adding an app updates every app's nav.
-export default function SiteNav({ showBeta }) {
-    const apps = getApps();
+// The single top bar shared by the platform and STS apps. The deepa.cat brand
+// acts as the home button; app-specific nav links render via `center` and
+// settings render via `children` on the right side.
+export default function SiteNav({ showBeta, center, children }) {
     const [betaOpen, setBetaOpen] = React.useState(false);
 
     return (
         <nav className={styles.nav}>
-            <a href="https://deepa.cat" className={styles.brand}>
-                deepa.cat
-            </a>
-            <div className={styles.links}>
-                <a href="https://deepa.cat" className={styles.link}>
-                    Home
+            <div className={styles.left}>
+                <a href="https://deepa.cat" className={styles.brand}>
+                    deepa.cat
                 </a>
-                {apps.map((app) => (
-                    <a
-                        key={app.slug}
-                        href={app.subdomain ? `https://${app.subdomain}.deepa.cat` : '/' + app.slug}
-                        className={styles.link}
-                    >
-                        {app.label}
-                    </a>
-                ))}
                 {showBeta && (
                     <button
                         type="button"
@@ -39,6 +26,8 @@ export default function SiteNav({ showBeta }) {
                     </button>
                 )}
             </div>
+            <div className={styles.center}>{center}</div>
+            <div className={styles.right}>{children}</div>
 
             {betaOpen && (
                 <div className={styles.betaOverlay} onClick={() => setBetaOpen(false)}>

@@ -32,7 +32,7 @@ function LanguageSelector({ className } = {}) {
     }, [setLang]);
 
     return (
-        <div className={className} style={{ width: '100%' }}>
+        <div className={className}>
             <Select
                 key={lang}
                 instanceId={lang}
@@ -60,6 +60,9 @@ function LanguageSelector({ className } = {}) {
                 })}
                 styles={{
                     container: (base) => ({ ...base, width: '100%' }),
+                    control: (base) => ({ ...base, minHeight: 44, height: 44 }),
+                    valueContainer: (base) => ({ ...base, minHeight: 44, paddingTop: 0, paddingBottom: 0 }),
+                    indicatorsContainer: (base) => ({ ...base, height: 44 }),
                     menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     menu: (base) => ({ ...base, zIndex: 9999 }),
                 }}

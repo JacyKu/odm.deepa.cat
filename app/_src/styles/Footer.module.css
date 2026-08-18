@@ -19,6 +19,11 @@
     color: var(--text-2);
 }
 
+.languageSelect {
+    width: 130px;
+    min-width: 0;
+}
+
 .version {
     color: var(--text-2);
     opacity: 0.6;

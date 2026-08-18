@@ -2,7 +2,8 @@ import { headers } from 'next/headers';
 import './globals.css';
 import { LanguageContextProvider } from './_src/components/languageContext';
 import { LowResourceProvider } from './_src/components/lowResourceContext';
-import Header from './_src/components/header';
+import { HideLoreProvider } from './_src/components/items/hideLoreContext';
+import Header, { HeaderNav } from './_src/components/header';
 import Footer from './_src/components/footer';
 import SiteNav from '@deepa/shared/site-nav';
 
@@ -45,7 +46,6 @@ export default async function StsLayout({ children }) {
                 />
             </head>
             <body>
-                <SiteNav showBeta />
                 <link rel="stylesheet" href={base + '/spritesheets/_minecraft.css'} />
                 <link rel="stylesheet" href={base + '/spritesheets/_itemsheet.css'} />
                 <link rel="stylesheet" href={base + '/spritesheets/_charmsheet.css'} />
@@ -58,9 +58,13 @@ export default async function StsLayout({ children }) {
                 <div className="site-content" id="top">
                     <LowResourceProvider>
                         <LanguageContextProvider>
-                            <Header />
-                            {children}
-                            <Footer />
+                            <HideLoreProvider>
+                                <SiteNav showBeta center={<HeaderNav />}>
+                                    <Header />
+                                </SiteNav>
+                                {children}
+                                <Footer />
+                            </HideLoreProvider>
                         </LanguageContextProvider>
                     </LowResourceProvider>
                 </div>
