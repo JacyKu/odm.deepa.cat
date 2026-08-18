@@ -365,6 +365,38 @@
     color: #fc5454;
 }
 
+.enchantTooltip {
+    position: relative;
+    cursor: help;
+}
+
+.enchantTooltipText {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 300px;
+    background: #15151f;
+    border: 1px solid #45456b;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: normal;
+    line-height: 1.4;
+    color: #f0f0f0;
+    text-align: center;
+    white-space: normal;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+
+.enchantTooltip:hover .enchantTooltipText {
+    opacity: 1;
+}
+
 .white {
     color: #fcfcfc;
 }

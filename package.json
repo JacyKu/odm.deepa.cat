@@ -11,7 +11,8 @@
     "update:spritesheet": "node scripts/spritesheetmaker/index.js",
     "update:minecraft-sheet": "node scripts/update-minecraft-sheet.mjs",
     "embed:debug": "node scripts/embed-debug.mjs",
-    "update:cz-data": "node scripts/update-cz-data.mjs"
+    "update:cz-data": "node scripts/update-cz-data.mjs",
+    "update:enchant-descriptions": "node scripts/update-enchant-descriptions.mjs"
   },
   "dependencies": {
     "@deepa/shared": "*",
