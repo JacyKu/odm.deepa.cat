@@ -1372,13 +1372,15 @@ export default function BuildForm({
         { type: 'spellCooldownPercent', name: 'builder.stats.magic.spellCooldownPercent', percent: true },
     ];
 
-    if (updateLink) {
-        // awkward signal thing to update the link from the builderheader to get the name properly fixed up
-        // don't need to worry about updating the build string since it auto updates on dropdown change now
-        const token = makeBuildString();
-        syncUrl(getStsBase() + '/builder/' + token);
-        setUpdateLink(false);
-    }
+    React.useEffect(() => {
+        if (updateLink) {
+            // awkward signal thing to update the link from the builderheader to get the name properly fixed up
+            // don't need to worry about updating the build string since it auto updates on dropdown change now
+            const token = makeBuildString();
+            syncUrl(getStsBase() + '/builder/' + token);
+            setUpdateLink(false);
+        }
+    }, [updateLink]);
 
     const czAllSkills = czData ? czData.trees.flatMap((t) => t.skills) : [];
     const czAbilityMap = new Map(czAllSkills.map((s) => [s.name, s]));
