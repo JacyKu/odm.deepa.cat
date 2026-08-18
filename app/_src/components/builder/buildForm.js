@@ -1,7 +1,6 @@
 import Select from 'react-select';
 import SelectInput from '../items/selectInput';
 import FloatingLabel from '../items/floatingLabel';
-import LoreToggle from '../items/loreToggle';
 import CheckboxWithLabel from '../items/checkboxWithLabel';
 import ItemTile from '../items/itemTile';
 import MasterworkableItemTile from '../items/masterworkableItemTile';
@@ -1409,11 +1408,11 @@ export default function BuildForm({
                                 name="region"
                                 key={`region-${regionSelectKey}-${czOpen ? 'o' : 'c'}`}
                                 options={regions}
-                                defaultValue={
+                                value={
                                     czOpen && regionValue === 2
-                                        ? { value: 'dd', label: 'Darkest Depths' }
+                                        ? { value: 2, label: 'Darkest Depths' }
                                         : czOpen && regionValue === 3
-                                          ? { value: 'cz', label: 'Celestial Zenith' }
+                                          ? { value: 3, label: 'Celestial Zenith' }
                                           : regions.find((r) => r.value === regionValue)
                                 }
                                 menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
@@ -1546,9 +1545,6 @@ export default function BuildForm({
                 />
                 <div style={{ justifySelf: 'end', width: 'min(400px, 100%)' }}>
                     <BuildImportBar embedded />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                        <LoreToggle />
-                    </div>
                 </div>
             </div>
 

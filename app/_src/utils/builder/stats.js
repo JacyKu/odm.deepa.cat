@@ -4,7 +4,8 @@ const types = ['mainhand', 'offhand', 'helmet', 'chestplate', 'leggings', 'boots
 
 class Stats {
     constructor(itemData, formData, enabledBoxes, extraStats, enabledClassAbilityBuffs) {
-        this.region = Number(formData.region || 3); // stupid fucking stateful react jank bullshit makes half the form not exist upon clicking reset so i have to have a default to avoid NaNs -LC
+        this.region = Number(formData.region);
+        if (![1, 2, 3].includes(this.region)) this.region = 3; // guard against non-numeric/absent region (e.g. legacy 'cz'/'dd' links) -LC
         this.enabledBoxes = enabledBoxes;
         this.enabledClassAbilityBuffs = enabledClassAbilityBuffs;
         this.itemNames = {
