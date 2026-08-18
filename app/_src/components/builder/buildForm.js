@@ -397,9 +397,8 @@ export default function BuildForm({
     const [czAbilities, setCzAbilities] = React.useState({}); // ability name -> rarity index
     const [czData, setCzData] = React.useState(null);
     const [czOpen, setCzOpen] = React.useState(false);
-    const [czOpenTrees, setCzOpenTrees] = React.useState({});
+    const [czSelectedTree, setCzSelectedTree] = React.useState(CZ_MAIN_TREES[0]);
     const [czRarityOpen, setCzRarityOpen] = React.useState(null); // ability name with the rarity menu open
-    const [ascension, setAscension] = React.useState(0); // Celestial Zenith ascension level (0-18)
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
@@ -422,12 +421,6 @@ export default function BuildForm({
         let nextEnhancements = enhancements;
         let nextCharms = charms;
         let nextCz = czAbilities;
-        // Ascension levels only exist in Celestial Zenith (Ring's 12+).
-        let nextAscension = ascension;
-        if (!(nextRegion === 3 && raw === 'cz')) {
-            nextAscension = 0;
-            setAscension(0);
-        }
         if (nextRegion === 1) {
             nextSpec = null;
             nextSpecPoints = {};
@@ -453,6 +446,9 @@ export default function BuildForm({
                 )
             );
             setCzAbilities(nextCz);
+            if (czSelectedTree === 'Prismatic') {
+                setCzSelectedTree(CZ_MAIN_TREES[0]);
+            }
         }
         refreshClassBuffs(skillPoints, nextSpecPoints, nextEnhancements);
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
@@ -464,7 +460,6 @@ export default function BuildForm({
             specSkills: nextSpecPoints,
             enhancements: nextEnhancements,
             czAbilities: nextCz,
-            ascension: nextAscension,
         });
         syncUrl(getStsBase() + '/builder/' + token);
     }
@@ -650,13 +645,6 @@ export default function BuildForm({
         else next[abilityName] = rarity;
         setCzAbilities(next);
         const token = makeBuildString(null, null, null, null, { czAbilities: next });
-        syncUrl(getStsBase() + '/builder/' + token);
-    }
-
-    function ascensionChanged(newValue) {
-        const next = Math.max(0, Math.min(18, Number(newValue?.value) || 0));
-        setAscension(next);
-        const token = makeBuildString(null, null, null, null, { ascension: next });
         syncUrl(getStsBase() + '/builder/' + token);
     }
 
@@ -868,13 +856,6 @@ export default function BuildForm({
                 nextCz = parsedCz;
                 setCzAbilities(parsedCz);
                 setCzOpen(true);
-            }
-            let ascPart = buildParts.find((str) => str.startsWith('asc='));
-            if (ascPart && czPart) {
-                const asc = Number(ascPart.split('asc=')[1]);
-                if (Number.isInteger(asc) && asc >= 0 && asc <= 18) setAscension(asc);
-            } else {
-                setAscension(0);
             }
             // Skills that were removed from the API: drop their points from the
             // form so the counters stay honest (the original URL is untouched
@@ -1195,11 +1176,6 @@ export default function BuildForm({
             )}`;
         }
 
-        const ascForUrl = stateOverride?.ascension !== undefined ? stateOverride.ascension : ascension;
-        if (ascForUrl > 0) {
-            legacy += `&asc=${ascForUrl}`;
-        }
-
         return encodeBuildParam(legacy);
     }
 
@@ -1410,6 +1386,12 @@ export default function BuildForm({
     const czActiveCount = Object.keys(czAbilities).filter(
         (name) => czAbilityMap.get(name)?.trigger && czAbilityMap.get(name).trigger !== 'Passive'
     ).length;
+    const czTrees = czData
+        ? czData.trees
+              .filter((t) => CZ_MAIN_TREES.includes(t.tree))
+              .filter((t) => regionValue !== 2 || t.tree !== 'Prismatic')
+        : [];
+    const czActiveTree = czTrees.find((t) => t.tree === czSelectedTree) || czTrees[0] || null;
 
     return (
         <form ref={formRef} onSubmit={sendUpdate} onReset={resetForm} id="buildForm">
@@ -1469,19 +1451,55 @@ export default function BuildForm({
                             />
                         </FloatingLabel>
                     </div>
-                    {czOpen && regionValue === 3 ? (
-                        <div>
-                            <SelectInput
-                                key={`asc-${ascension}`}
-                                name="asc"
-                                floatingLabel="Ascension"
-                                sortableStats={Array.from({ length: 19 }, (_, i) => ({
-                                    value: i,
-                                    label: String(i),
-                                }))}
-                                default={ascension > 0 ? { value: ascension, label: String(ascension) } : undefined}
-                                onChange={ascensionChanged}
-                            />
+                    {czOpen ? (
+                        <div className={styles.czTreeSelector}>
+                            <FloatingLabel label="Tree">
+                                <Select
+                                    instanceId="cz-tree"
+                                    name="czTree"
+                                    options={czTrees.map((t) => ({ value: t.tree, label: t.tree }))}
+                                    value={czActiveTree ? { value: czActiveTree.tree, label: czActiveTree.tree } : null}
+                                    onChange={(opt) => setCzSelectedTree(opt.value)}
+                                    isSearchable={false}
+                                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                                    menuPosition="fixed"
+                                    theme={(theme) => ({
+                                        ...theme,
+                                        borderRadius: 0,
+                                        colors: {
+                                            ...theme.colors,
+                                            primary: 'var(--text-1)',
+                                            primary25: 'var(--surface-2)',
+                                            neutral0: 'var(--glass-1)',
+                                            neutral5: 'var(--glass-2)',
+                                            neutral10: 'var(--glass-2)',
+                                            neutral20: 'var(--control-border)',
+                                            neutral30: 'var(--control-border-hover)',
+                                            neutral60: 'var(--text-2)',
+                                            neutral80: 'var(--text-1)',
+                                        },
+                                    })}
+                                    styles={{
+                                        container: (base) => ({ ...base, width: '100%', minWidth: 180 }),
+                                        control: (base) => ({ ...base, minHeight: 42, height: 42 }),
+                                        valueContainer: (base) => ({
+                                            ...base,
+                                            height: 42,
+                                            paddingTop: 0,
+                                            paddingBottom: 0,
+                                        }),
+                                        indicatorsContainer: (base) => ({ ...base, height: 42 }),
+                                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                                        menu: (base) => ({ ...base, zIndex: 9999 }),
+                                    }}
+                                />
+                            </FloatingLabel>
+                            {czActiveTree && czActiveTree.skills.some((s) => czAbilities[s.name] !== undefined) && (
+                                <span className={styles.skillTotal}>
+                                    {czActiveTree.skills.filter((s) => czAbilities[s.name] !== undefined).length}{' '}
+                                    selected
+                                </span>
+                            )}
                         </div>
                     ) : (
                         <div>
@@ -1695,7 +1713,7 @@ export default function BuildForm({
                                 <span className={styles.skillTotal}>{czActiveCount} / 4 active abilities</span>
                                 {czActiveCount > 4 && (
                                     <span className="text-danger fw-bold">
-                                        You can't use more than 4 actives on A12+!
+                                        You can't use more than 4 actives above ascension 12!
                                     </span>
                                 )}
                                 <span className={styles.skillTotal}>
@@ -1709,151 +1727,101 @@ export default function BuildForm({
                             {!czData ? (
                                 <div className={styles.skillsLoading}>Loading abilities...</div>
                             ) : (
-                                <div className={styles.skillsGrid}>
-                                    {czData.trees
-                                        .filter((t) => CZ_MAIN_TREES.includes(t.tree))
-                                        .filter((t) => regionValue !== 2 || t.tree !== 'Prismatic')
-                                        .map((tree) => {
-                                            const selectedCount = tree.skills.filter(
-                                                (s) => czAbilities[s.name] !== undefined
-                                            ).length;
+                                czActiveTree && (
+                                    <div className={styles.czTreeSkills}>
+                                        {czActiveTree.skills.map((ability) => {
+                                            const selected = czAbilities[ability.name] !== undefined;
+                                            const rarity = czAbilities[ability.name] ?? 0;
+                                            const desc =
+                                                (regionValue === 2
+                                                    ? ability.depths_description
+                                                    : ability.zenith_description) ||
+                                                ability.zenith_description ||
+                                                '';
+                                            const triggerTaken =
+                                                ability.trigger !== 'Passive' &&
+                                                czData.trees.some(
+                                                    (t2) =>
+                                                        t2.tree !== czActiveTree.tree &&
+                                                        t2.skills.some(
+                                                            (s2) =>
+                                                                s2.name !== ability.name &&
+                                                                czAbilities[s2.name] !== undefined &&
+                                                                s2.trigger === ability.trigger
+                                                        )
+                                                );
+                                            const tooltip = [
+                                                `${ability.name} (${ability.trigger})`,
+                                                czData.rarities[rarity],
+                                                formatCzDescription(desc, rarity),
+                                                triggerTaken
+                                                    ? 'Already using another ability with this trigger!'
+                                                    : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join('\n\n');
                                             return (
-                                                <div key={tree.tree} className={styles.czTree}>
-                                                    <div
-                                                        className={styles.czTreeHeader}
-                                                        onClick={() =>
-                                                            setCzOpenTrees((o) => ({
-                                                                ...o,
-                                                                [tree.tree]: !o[tree.tree],
-                                                            }))
+                                                <div
+                                                    key={ability.name}
+                                                    className={`${styles.czSkillRow}${
+                                                        triggerTaken && !selected ? ` ${styles.czDisabled}` : ''
+                                                    }`}
+                                                    title={tooltip}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selected}
+                                                        disabled={triggerTaken && !selected}
+                                                        onChange={(e) =>
+                                                            czChanged(ability.name, e.target.checked ? rarity : null)
                                                         }
-                                                    >
-                                                        <span>{czOpenTrees[tree.tree] ? '▾' : '▸'}</span>
-                                                        <span>{tree.tree}</span>
-                                                        <span className={styles.czTreeDesc}>{tree.description}</span>
-                                                        <span className={styles.skillTotal}>
-                                                            {selectedCount} selected
-                                                        </span>
-                                                    </div>
-                                                    {czOpenTrees[tree.tree] && (
-                                                        <div className={styles.czTreeSkills}>
-                                                            {tree.skills.map((ability) => {
-                                                                const selected =
-                                                                    czAbilities[ability.name] !== undefined;
-                                                                const rarity = czAbilities[ability.name] ?? 0;
-                                                                const desc =
-                                                                    (regionValue === 2
-                                                                        ? ability.depths_description
-                                                                        : ability.zenith_description) ||
-                                                                    ability.zenith_description ||
-                                                                    '';
-                                                                const triggerTaken =
-                                                                    ability.trigger !== 'Passive' &&
-                                                                    czData.trees.some(
-                                                                        (t2) =>
-                                                                            t2.tree !== tree.tree &&
-                                                                            t2.skills.some(
-                                                                                (s2) =>
-                                                                                    s2.name !== ability.name &&
-                                                                                    czAbilities[s2.name] !==
-                                                                                        undefined &&
-                                                                                    s2.trigger === ability.trigger
-                                                                            )
-                                                                    );
-                                                                const tooltip = [
-                                                                    `${ability.name} (${ability.trigger})`,
-                                                                    czData.rarities[rarity],
-                                                                    formatCzDescription(desc, rarity),
-                                                                    triggerTaken
-                                                                        ? 'Already using another ability with this trigger!'
-                                                                        : null,
-                                                                ]
-                                                                    .filter(Boolean)
-                                                                    .join('\n\n');
-                                                                return (
+                                                        aria-label={`${ability.name} (${ability.trigger})`}
+                                                    />
+                                                    <span className={styles.skillName}>{ability.name}</span>
+                                                    <span className={styles.czTrigger}>{ability.trigger}</span>
+                                                    <div className={styles.czRarityWrap}>
+                                                        <button
+                                                            type="button"
+                                                            className={`${styles.czRarity}${
+                                                                !selected ? ` ${styles.czRarityDisabled}` : ''
+                                                            }`}
+                                                            disabled={!selected}
+                                                            onClick={() =>
+                                                                setCzRarityOpen((cur) =>
+                                                                    cur === ability.name ? null : ability.name
+                                                                )
+                                                            }
+                                                            title="Rarity"
+                                                        >
+                                                            {czData.rarities[rarity]}
+                                                            <span className={styles.czRarityCaret}>▾</span>
+                                                        </button>
+                                                        {czRarityOpen === ability.name && (
+                                                            <div className={styles.czRarityMenu}>
+                                                                {czData.rarities.map((r, i) => (
                                                                     <div
-                                                                        key={ability.name}
-                                                                        className={`${styles.czSkillRow}${
-                                                                            triggerTaken && !selected
-                                                                                ? ` ${styles.czDisabled}`
+                                                                        key={r}
+                                                                        className={`${styles.czRarityOption}${
+                                                                            i === rarity
+                                                                                ? ` ${styles.czRarityOptionActive}`
                                                                                 : ''
                                                                         }`}
-                                                                        title={tooltip}
+                                                                        onClick={() => {
+                                                                            czChanged(ability.name, i);
+                                                                            setCzRarityOpen(null);
+                                                                        }}
                                                                     >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={selected}
-                                                                            disabled={triggerTaken && !selected}
-                                                                            onChange={(e) =>
-                                                                                czChanged(
-                                                                                    ability.name,
-                                                                                    e.target.checked ? rarity : null
-                                                                                )
-                                                                            }
-                                                                            aria-label={`${ability.name} (${ability.trigger})`}
-                                                                        />
-                                                                        <span className={styles.skillName}>
-                                                                            {ability.name}
-                                                                        </span>
-                                                                        <span className={styles.czTrigger}>
-                                                                            {ability.trigger}
-                                                                        </span>
-                                                                        <div className={styles.czRarityWrap}>
-                                                                            <button
-                                                                                type="button"
-                                                                                className={`${styles.czRarity}${
-                                                                                    !selected
-                                                                                        ? ` ${styles.czRarityDisabled}`
-                                                                                        : ''
-                                                                                }`}
-                                                                                disabled={!selected}
-                                                                                onClick={() =>
-                                                                                    setCzRarityOpen((cur) =>
-                                                                                        cur === ability.name
-                                                                                            ? null
-                                                                                            : ability.name
-                                                                                    )
-                                                                                }
-                                                                                title="Rarity"
-                                                                            >
-                                                                                {czData.rarities[rarity]}
-                                                                                <span className={styles.czRarityCaret}>
-                                                                                    ▾
-                                                                                </span>
-                                                                            </button>
-                                                                            {czRarityOpen === ability.name && (
-                                                                                <div className={styles.czRarityMenu}>
-                                                                                    {czData.rarities.map((r, i) => (
-                                                                                        <div
-                                                                                            key={r}
-                                                                                            className={`${styles.czRarityOption}${
-                                                                                                i === rarity
-                                                                                                    ? ` ${styles.czRarityOptionActive}`
-                                                                                                    : ''
-                                                                                            }`}
-                                                                                            onClick={() => {
-                                                                                                czChanged(
-                                                                                                    ability.name,
-                                                                                                    i
-                                                                                                );
-                                                                                                setCzRarityOpen(null);
-                                                                                            }}
-                                                                                        >
-                                                                                            {r}
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
+                                                                        {r}
                                                                     </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    )}
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
-                                </div>
+                                    </div>
+                                )
                             )}
                         </div>
                     </div>

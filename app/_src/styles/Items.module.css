@@ -1013,6 +1013,17 @@
     margin-bottom: 6px;
 }
 
+.czTreeSelector {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.czTreeSelector > div:first-child {
+    width: 220px;
+}
+
 .czSection {
     padding: 8px;
 }
