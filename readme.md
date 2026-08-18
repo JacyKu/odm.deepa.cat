@@ -14,6 +14,9 @@ Please report issues or feature requests on [Github](https://github.com/JacyKu/s
 - Build share/save system.
     > Public build database where players can share and save their builds, optionally having their own build saves.
 
+- Build notes.
+    > Implemented together with the share/save system.
+
 - Discord Application.
     > Quickly access a build you created or share items you like. Implentation after a Build share/save system.
 ---
