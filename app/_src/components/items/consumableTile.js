@@ -1,4 +1,5 @@
 import styles from '../../styles/Items.module.css';
+import Enchants from './enchants';
 import ConsumableFormatter from '../../utils/items/consumableFormatter';
 import TranslatableText from '../translatableText';
 import React from 'react';
@@ -118,6 +119,7 @@ export default function ConsumableTile(data) {
             </span>
             <span className={styles[camelCase(item.location)]}>{item.location}</span>
             {formattedEffects}
+            <Enchants item={item}></Enchants>
             {item.lore && !hideLore ? <span className={styles.infoText}>{item.lore}</span> : ''}
             {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
             {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{item.extras.notes}</p> : ''}

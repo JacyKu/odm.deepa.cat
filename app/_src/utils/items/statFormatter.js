@@ -14,7 +14,7 @@ const Formats = {
 // maintained by hand. New enchants added to the API show up automatically.
 // The display format is inferred from the stat key's naming convention and
 // its value:
-//   - "curse_of_*" / "curse_*"  -> curse (red, level shown)
+//   - "curse_of_*" / "curse_*" / "*_fragility" / plain curse names -> curse (red, level shown)
 //   - "*_percent" / "*_flat"    -> attribute ("+15% ...", "+5 ...")
 //   - "*_base"                  -> base stat ("116 ...")
 //   - plain name + positive int -> enchant level ("Absorbing Barrier 4")
@@ -22,13 +22,18 @@ const Formats = {
 //
 // armor/agility are the only stats that break these conventions (plain
 // names that are attributes), so they get a small explicit exception.
+// A few curses (Two Handed, Starvation, Ineptitude, Cumbersome, Oversized)
+// also use plain names, so they are listed explicitly.
 
 const PLAIN_ATTRIBUTES = new Set(['armor', 'agility']);
+const PLAIN_CURSES = new Set(['two_handed', 'starvation', 'ineptitude', 'cumbersome', 'oversized']);
 const HIDDEN_STATS = new Set(['noglint']); // internal flag with no display meaning
 
 function inferFormat(name, value) {
     if (PLAIN_ATTRIBUTES.has(name)) return Formats.ATTRIBUTE;
     if (name.startsWith('curse_')) return Formats.CURSE;
+    if (name.endsWith('_fragility')) return Formats.CURSE;
+    if (PLAIN_CURSES.has(name)) return Formats.CURSE;
     if (name.endsWith('_percent') || name.endsWith('_flat')) return Formats.ATTRIBUTE;
     if (name.endsWith('_base')) return Formats.BASE_STAT;
     if (Number.isInteger(value) && value >= 1) return Formats.ENCHANT;
