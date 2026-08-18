@@ -1493,12 +1493,6 @@ export default function BuildForm({
                                     }}
                                 />
                             </FloatingLabel>
-                            {czActiveTree && czActiveTree.skills.some((s) => czAbilities[s.name] !== undefined) && (
-                                <span className={styles.skillTotal}>
-                                    {czActiveTree.skills.filter((s) => czAbilities[s.name] !== undefined).length}{' '}
-                                    selected
-                                </span>
-                            )}
                         </div>
                     ) : (
                         <div>
