@@ -891,6 +891,9 @@ export default function BuildForm({
                 const part = buildParts.find((str) => str.startsWith(`${key}=`));
                 if (part) statValues[key] = part.split('=')[1];
             }
+            if (statValues.health !== undefined) {
+                statValues.health = String(Math.max(1, Number(statValues.health)));
+            }
             if (Object.keys(statValues).length > 0) {
                 setStatInputs((prev) => ({ ...DEFAULT_STAT_INPUTS, ...statValues }));
                 if (statValues.region !== undefined) {

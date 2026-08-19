@@ -168,7 +168,7 @@ export function decodeBuildParam(build, itemData) {
         if (bytes.length < 1 + 6 * 4) return null;
 
         const version = bytes[0];
-        if (version !== 2 && version !== 3 && version !== 4 && version !== 5) return null;
+        if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6) return null;
 
         const readU32 = (off) =>
             (bytes[off] | (bytes[off + 1] << 8) | (bytes[off + 2] << 16) | (bytes[off + 3] << 24)) >>> 0;
@@ -226,10 +226,22 @@ export function decodeBuildParam(build, itemData) {
             if (gameClass) legacy += `&cl=${encodeURIComponent(gameClass)}`;
             if (skillEntries.length > 0) legacy += `&sk=${skillEntries.join(',')}`;
 
-            // Extra stat inputs (7 bytes, absent in older tokens).
+            // Extra stat inputs. v6+ encodes health as a varint (no upper cap,
+            // minimum 1); older tokens keep 7 single bytes (health 0-255).
             const STAT_KEYS = ['health', 'tenacity', 'vitality', 'vigor', 'focus', 'perspicacity', 'region'];
             const STAT_DEFAULTS = [100, 0, 0, 0, 0, 0, 3];
-            if (offset + 7 <= bytes.length) {
+            if (version === 6) {
+                if (offset + 6 <= bytes.length) {
+                    const singleStats = [bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3], bytes[offset + 4], bytes[offset + 5]];
+                    offset += 6;
+                    const health = readVarint(bytes, offset);
+                    offset = health.offset;
+                    const statVals = [Math.max(1, health.value || 100), ...singleStats];
+                    for (let i = 0; i < 7; i++) {
+                        if (statVals[i] !== STAT_DEFAULTS[i]) legacy += `&${STAT_KEYS[i]}=${statVals[i]}`;
+                    }
+                }
+            } else if (offset + 7 <= bytes.length) {
                 for (let i = 0; i < 7; i++) {
                     const v = bytes[offset++];
                     if (v !== STAT_DEFAULTS[i]) legacy += `&${STAT_KEYS[i]}=${v}`;
@@ -457,15 +469,16 @@ export function encodeBuildParamBinaryV2({
     }
     const skillCount = writeVarint(skillParts.length / 3);
 
-    // Extra stat inputs: health/tenacity/vitality/vigor/focus/perspicacity/region as 7 bytes.
-    const STAT_DEFAULTS = [100, 0, 0, 0, 0, 0, 3];
-    const statBytes = Uint8Array.from(
-        STAT_DEFAULTS.map((d, i) => {
-            const v = Number(statValues && statValues[i]);
-            const n = Number.isFinite(v) ? v : d;
-            return Math.max(0, Math.min(255, Math.round(n)));
-        })
-    );
+    // Extra stat inputs. Health is a varint in v6+ (no upper cap, minimum 1);
+    // the remaining stats stay single bytes.
+    const statBytes = Uint8Array.from([0, 0, 0, 0, 0, 3].map((d, i) => {
+        const v = Number(statValues && statValues[i + 1]);
+        const n = Number.isFinite(v) ? v : d;
+        return Math.max(0, Math.min(255, Math.round(n)));
+    }));
+    const healthRaw = Number(statValues && statValues[0]);
+    const health = Number.isFinite(healthRaw) ? Math.max(1, Math.round(healthRaw)) : 100;
+    const healthBytes = writeVarint(health);
 
     // v3 extras: spec, spec skill points, and enhancements.
     const specStr = spec ? String(spec) : '';
@@ -501,9 +514,7 @@ export function encodeBuildParamBinaryV2({
     }
     const czCount = writeVarint(czParts.length / 3);
 
-    const ascByte = Uint8Array.from([Math.max(0, Math.min(18, Number(ascension) || 0))]);
-
-    const version = Uint8Array.from([5]);
+    const version = Uint8Array.from([6]);
     const packed = concatBytes(
         version,
         hashes,
@@ -516,6 +527,7 @@ export function encodeBuildParamBinaryV2({
         skillCount,
         ...skillParts,
         statBytes,
+        healthBytes,
         specLen,
         specBytes,
         specSkillCount,
@@ -523,8 +535,7 @@ export function encodeBuildParamBinaryV2({
         enCount,
         ...enParts,
         czCount,
-        ...czParts,
-        ascByte
+        ...czParts
     );
     return BINARY_V1_PREFIX + toBase64Url(packed);
 }

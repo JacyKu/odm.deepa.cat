@@ -79,7 +79,7 @@ class Stats {
         this.focus = formData.focus ? formData.focus : 0;
         this.perspicacity = formData.perspicacity ? formData.perspicacity : 0;
 
-        this.currentHealthPercent = formData.health ? new Percentage(formData.health) : new Percentage(100);
+        this.currentHealthPercent = formData.health ? new Percentage(Math.max(1, Number(formData.health))) : new Percentage(100);
         this.situationalCap = [20, 30, 36][this.region - 1];
         this.situationalEHPScaling = [0.2, 0.25, 0.3][this.region - 1];
         this.damageInfusionsMultiplier = 0.75 + 0.25 * this.region;
