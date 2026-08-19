@@ -7,6 +7,17 @@
     padding-left: 46px;
 }
 
+@media (max-width: 900px) {
+    .builderHeader {
+        justify-self: center;
+    }
+
+    .builderHeaderText,
+    .theTextbox {
+        font-size: 1.25rem;
+    }
+}
+
 .builderHeaderText {
     display: inline-block;
     text-align: left;

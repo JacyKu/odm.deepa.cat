@@ -55,29 +55,44 @@ export default function BuildImportBar({ embedded }) {
     }
 
     if (embedded) {
+        const [open, setOpen] = React.useState(false);
         return (
-            <div>
-                <div className={styles.importRow}>
-                    <input
-                        type="text"
-                        className={styles.importInput}
-                        placeholder="https://odetomisery.vercel.app/builder/..."
-                        aria-label="Import build link"
-                        value={value}
-                        onChange={(e) => {
-                            setValue(e.target.value);
-                            setError(false);
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleImport();
-                        }}
-                        spellCheck="false"
-                    />
-                    <button type="button" className={styles.importButton} onClick={handleImport}>
-                        Import
-                    </button>
+            <div className={styles.importWrap}>
+                <button
+                    type="button"
+                    className={styles.importMenuBtn}
+                    onClick={() => setOpen((o) => !o)}
+                    aria-label="Import build link"
+                    aria-expanded={open}
+                >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                        <path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" />
+                    </svg>
+                </button>
+                {open && <div className={styles.importBackdrop} onClick={() => setOpen(false)} />}
+                <div className={`${styles.importPanel}${open ? ` ${styles.importPanelOpen}` : ''}`}>
+                    <div className={styles.importRow}>
+                        <input
+                            type="text"
+                            className={styles.importInput}
+                            placeholder="https://odetomisery.vercel.app/builder/..."
+                            aria-label="Import build link"
+                            value={value}
+                            onChange={(e) => {
+                                setValue(e.target.value);
+                                setError(false);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleImport();
+                            }}
+                            spellCheck="false"
+                        />
+                        <button type="button" className={styles.importButton} onClick={handleImport}>
+                            Import
+                        </button>
+                    </div>
+                    {error && <div className={styles.importError}>Could not read that build link.</div>}
                 </div>
-                {error && <div className={styles.importError}>Could not read that build link.</div>}
             </div>
         );
     }

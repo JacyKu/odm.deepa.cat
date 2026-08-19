@@ -149,30 +149,47 @@ export default function Header() {
         { value: 'light', label: 'Light' },
     ];
 
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const closeMenu = () => setMenuOpen(false);
+
     return (
         <div className={styles.controls}>
-            <label className={`${styles.toggle} ${styles.loreToggle}`}>
-                <input type="checkbox" checked={lowRes} onChange={toggleLowRes} aria-label="Hide textures" />
-                Hide Textures
-            </label>
-            <LoreToggle className={styles.loreToggle} />
-            <HeaderSelect
-                instanceId="font"
-                options={fontOptions}
-                value={font}
-                onChange={(option) => setFontValue(option.value)}
-                formatOptionLabel={({ label, fontFamily }, { context }) =>
-                    context === 'menu' && fontFamily ? <span style={{ fontFamily }}>{label}</span> : label
-                }
-                className={styles.fontSelect}
-            />
-            <HeaderSelect
-                instanceId="theme"
-                options={themeOptions}
-                value={theme}
-                onChange={(option) => setThemeValue(option.value)}
-                className={styles.themeSelect}
-            />
+            <button
+                type="button"
+                className={styles.menuBtn}
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-label="Settings"
+                aria-expanded={menuOpen}
+            >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
+                </svg>
+            </button>
+            {menuOpen && <div className={styles.menuBackdrop} onClick={closeMenu} />}
+            <div className={`${styles.menuPanel}${menuOpen ? ` ${styles.menuOpen}` : ''}`}>
+                <label className={`${styles.toggle} ${styles.loreToggle}`}>
+                    <input type="checkbox" checked={lowRes} onChange={toggleLowRes} aria-label="Hide textures" />
+                    Hide Textures
+                </label>
+                <LoreToggle className={styles.loreToggle} />
+                <HeaderSelect
+                    instanceId="font"
+                    options={fontOptions}
+                    value={font}
+                    onChange={(option) => setFontValue(option.value)}
+                    formatOptionLabel={({ label, fontFamily }, { context }) =>
+                        context === 'menu' && fontFamily ? <span style={{ fontFamily }}>{label}</span> : label
+                    }
+                    className={styles.fontSelect}
+                />
+                <HeaderSelect
+                    instanceId="theme"
+                    options={themeOptions}
+                    value={theme}
+                    onChange={(option) => setThemeValue(option.value)}
+                    className={styles.themeSelect}
+                />
+            </div>
         </div>
     );
 }

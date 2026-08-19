@@ -1397,10 +1397,7 @@ export default function BuildForm({
     return (
         <form ref={formRef} onSubmit={sendUpdate} onReset={resetForm} id="buildForm">
             {/* Top row: region/class/spec on the left, title centered, import on the right */}
-            <div
-                style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '10px' }}
-                className="mt-3 mb-1"
-            >
+            <div className={`${styles.builderTopRow} mt-3 mb-1`}>
                 <div className="d-flex flex-wrap align-items-center">
                     <div className="me-3">
                         <FloatingLabel label="Region">

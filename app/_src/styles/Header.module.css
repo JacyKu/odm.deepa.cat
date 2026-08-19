@@ -32,9 +32,95 @@
 }
 
 .controls {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 10px;
+}
+
+.menuBtn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-1);
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.menuBtn:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.menuPanel {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menuBackdrop {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .nav {
+        gap: 6px;
+    }
+
+    .navButton {
+        padding: 4px 8px;
+        min-height: 30px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 1299px) {
+    .menuBtn {
+        display: inline-flex;
+    }
+
+    .menuPanel {
+        display: none;
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        min-width: 250px;
+        padding: 12px;
+        background: var(--glass-1);
+        border: 2px solid var(--glass-border);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+        z-index: 60;
+    }
+
+    .menuPanel.menuOpen {
+        display: flex;
+    }
+
+    .menuPanel .fontSelect,
+    .menuPanel .themeSelect {
+        width: 100%;
+    }
+
+    .menuPanel .loreToggle {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .menuBackdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+    }
 }
 
 .toggle {
