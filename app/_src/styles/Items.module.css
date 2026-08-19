@@ -16,9 +16,9 @@
 .itemTile {
     font-size: 1em;
     line-height: 1.3;
-    width: 280px;
+    width: 260px;
     box-sizing: border-box;
-    margin: 15px;
+    margin: 4px 8px;
     background: #110110;
     border: 3px solid #2c0860;
     border-radius: 0;
@@ -35,26 +35,44 @@
     background: #6639622d;
 }
 
-.checkboxWithLabel {
-    outline: 2px solid var(--glass-border);
-}
-
 .noSituationals {
     color: var(--text-2);
     font-style: italic;
-}
-
-.noSituationals,
-.checkboxWithLabel {
     background-color: var(--glass-2);
     padding: 4px;
     margin: 2px;
     width: fit-content;
-    height: 40px;
 }
 
-.checkboxWithLabel > * {
-    padding-left: 3px;
+.checkboxWithLabel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--glass-2);
+    border: 1px solid var(--glass-border);
+    padding: 2px 10px 2px 6px;
+    margin: 2px;
+    width: fit-content;
+    height: 30px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.checkboxWithLabel:hover {
+    background-color: var(--glass-1);
+    border-color: var(--text-2);
+}
+
+.checkboxWithLabel input {
+    margin: 0;
+    cursor: pointer;
+    accent-color: #4a78fc;
+}
+
+.checkboxWithLabel label {
+    margin: 0;
+    cursor: pointer;
+    font-size: 14px;
 }
 
 .grayedout {
@@ -1176,7 +1194,9 @@
     background: var(--glass-1);
     color: var(--text-1);
     cursor: pointer;
-    transition: border-color 150ms ease, background-color 150ms ease;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
 }
 
 .importMenuBtn:hover {
@@ -1234,6 +1254,34 @@
     font-size: 13px;
     text-align: center;
     margin-top: 4px;
+}
+
+/* Total charm stats (effect summary) shown after the builder stat cards. */
+div.charmTotals {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    width: 100%;
+    max-width: 420px;
+    padding: 8px 10px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+}
+
+.charmTotalsTitle {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.charmTotals p b {
+    color: var(--text-2);
+    font-weight: 600;
+}
+
+.charmTotals p {
+    font-size: 14px;
 }
 
 .savedLink {
@@ -1318,16 +1366,29 @@
     box-shadow: none !important;
 }
 
-.builderStatCard {
+div.builderStatCard {
     border: 2px solid var(--glass-border);
     background: var(--glass-1);
     box-shadow: var(--shadow-elevated);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    padding: 10px 12px !important; /* beat bootstrap .py-1/.py-2 utilities */
+}
+
+.builderStatCard p {
+    font-size: 14px;
 }
 
 .monoValue {
     font-family: monospace;
+}
+
+/* Stat line: label on the left, value pushed to the end of the line. */
+.statRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
 }
 
 .builderStatCard p b {

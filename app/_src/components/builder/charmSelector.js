@@ -43,6 +43,21 @@ export function resolveCharmKey(itemData, nameOrKey) {
     );
 }
 
+// Effect summary: totals of every stat across all equipped charms.
+export function computeCharmTotals(itemData, charmNames) {
+    const totals = {};
+    for (const name of charmNames || []) {
+        const key = resolveCharmKey(itemData, name);
+        const stats = key ? itemData[key].stats : null;
+        if (!stats) continue;
+        for (const [stat, obj] of Object.entries(stats)) {
+            if (!obj || typeof obj.value !== 'number') continue;
+            totals[stat] = { value: (totals[stat]?.value || 0) + obj.value };
+        }
+    }
+    return Object.fromEntries(Object.entries(totals).filter(([, obj]) => obj.value !== 0));
+}
+
 export default function CharmSelector({ update, translatableName, itemData, hideList, charmNames }) {
     const inputRef = React.useRef();
 

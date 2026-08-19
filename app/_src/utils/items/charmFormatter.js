@@ -48,6 +48,22 @@ class CharmFormatter {
               : 'positiveCharm';
     }
 
+    // Splits a charm stat into its label and value parts so the builder's
+    // effect summary can render them like the regular stat cards
+    // (label + monospace value).
+    static charmStatParts(stat, valueObj) {
+        let rawLabel = stat
+            .split('_')
+            .filter((part) => part != 'm' && part != 'p' && part != 'bow' && part != 'tool')
+            .map((part) => part[0].toUpperCase() + part.substring(1))
+            .join(' ');
+        let value = valueObj.value; // hack to fix locked charms
+        return {
+            label: rawLabel.replace(' Percent', '').replace(' Base', '').replace(' Flat', ''),
+            value: `${value > 0 ? '+' : ''}${value}${rawLabel.includes(' Percent') ? '%' : ''}`,
+        };
+    }
+
     static formatCharm(charm) {
         let formattedStats = [];
 
