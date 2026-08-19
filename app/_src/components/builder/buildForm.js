@@ -399,6 +399,7 @@ export default function BuildForm({
     const [czOpen, setCzOpen] = React.useState(false);
     const [czSelectedTree, setCzSelectedTree] = React.useState(CZ_MAIN_TREES[0]);
     const [czRarityOpen, setCzRarityOpen] = React.useState(null); // ability name with the rarity menu open
+    const [charmStatsOpen, setCharmStatsOpen] = React.useState(false);
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
@@ -2021,9 +2022,43 @@ export default function BuildForm({
                     </div>
                 </>
             )}
+            {regionValue >= 3 && Object.keys(charmTotals).length > 0 && (
+                <div className="row justify-content-center mb-1">
+                    <div className={`${styles.charmTotals}`}>
+                        <button
+                            type="button"
+                            className={styles.charmTotalsHeader}
+                            aria-expanded={charmStatsOpen}
+                            onClick={() => setCharmStatsOpen((o) => !o)}
+                        >
+                            <span className={styles.charmTotalsTitle}>Charm Stats</span>
+                            <span className={styles.charmTotalsChevron}>❯</span>
+                        </button>
+                        {charmStatsOpen && (
+                            <>
+                                {Object.entries(charmTotals).map(([stat, obj]) => {
+                                    const parts = CharmFormatter.charmStatParts(stat, obj);
+                                    return (
+                                        <p key={stat} className={`${styles.statRow} mb-0 mt-1`}>
+                                            <b>{parts.label}</b>
+                                            <span
+                                                className={`${styles.monoValue} ${styles[CharmFormatter.statStyle(stat, obj)]}`}
+                                            >
+                                                {parts.value}
+                                            </span>
+                                        </p>
+                                    );
+                                })}
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
             <div className="row justify-content-center mb-1">
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-1`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-1`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.misc"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">&nbsp;</h6>
@@ -2045,8 +2080,10 @@ export default function BuildForm({
                         )
                     )}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.health"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">&nbsp;</h6>
@@ -2068,8 +2105,10 @@ export default function BuildForm({
                         )
                     )}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.damageReduction"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">
@@ -2093,8 +2132,10 @@ export default function BuildForm({
                         )
                     )}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.damageReductionHealthNormalized"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">
@@ -2118,8 +2159,10 @@ export default function BuildForm({
                         )
                     )}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.effectiveHealth"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">&nbsp;</h6>
@@ -2164,8 +2207,10 @@ export default function BuildForm({
                         return temp;
                     })()}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.melee"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">&nbsp;</h6>
@@ -2189,8 +2234,10 @@ export default function BuildForm({
                         );
                     })}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.projectile"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">&nbsp;</h6>
@@ -2217,8 +2264,10 @@ export default function BuildForm({
                         );
                     })}
                 </div>
-                <div className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}>
-                    <h5 className="text-center fw-bold mb-0">
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
                         <TranslatableText identifier="builder.statCategories.magic"></TranslatableText>
                     </h5>
                     <h6 className="text-center fw-bold">&nbsp;</h6>
@@ -2245,26 +2294,6 @@ export default function BuildForm({
                     })}
                 </div>
             </div>
-            {regionValue >= 3 && Object.keys(charmTotals).length > 0 && (
-                <div className="row justify-content-center mb-1">
-                    <div className={`${styles.charmTotals}`}>
-                        <div className={styles.charmTotalsTitle}>Charm Stats</div>
-                        {Object.entries(charmTotals).map(([stat, obj]) => {
-                            const parts = CharmFormatter.charmStatParts(stat, obj);
-                            return (
-                                <p key={stat} className={`${styles.statRow} mb-0 mt-1`}>
-                                    <b>{parts.label}</b>
-                                    <span
-                                        className={`${styles.monoValue} ${styles[CharmFormatter.statStyle(stat, obj)]}`}
-                                    >
-                                        {parts.value}
-                                    </span>
-                                </p>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
             <div className="row justify-content-center pt-1 mb-1 g-1">
                 <TranslatableText
                     identifier="builder.misc.situationals"

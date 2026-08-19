@@ -184,6 +184,29 @@ html h1 {
     background: var(--surface-2);
 }
 
+/* Custom page scrollbar (Chromium/WebKit) */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-2) transparent;
+}
+
+html::-webkit-scrollbar {
+    width: 10px;
+}
+
+html::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+    background: var(--surface-2);
+    border: 2px solid var(--bg-0);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+    background: var(--text-2);
+}
+
 /* Accessible focus rings without changing the color palette. */
 :where(a, button, input, select, textarea):focus {
     outline: none;

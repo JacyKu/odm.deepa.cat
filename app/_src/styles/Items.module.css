@@ -1272,7 +1272,36 @@ div.charmTotals {
 .charmTotalsTitle {
     font-weight: bold;
     font-size: 14px;
-    margin-bottom: 2px;
+}
+
+.charmTotalsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+}
+
+.charmTotalsHeader:focus-visible {
+    outline: 1px solid var(--text-1);
+    outline-offset: 1px;
+}
+
+.charmTotalsChevron {
+    display: inline-block;
+    font-size: 12px;
+    transition: transform 0.15s ease;
+}
+
+.charmTotalsHeader[aria-expanded='true'] .charmTotalsChevron {
+    transform: rotate(90deg);
 }
 
 .charmTotals p b {
@@ -1376,6 +1405,10 @@ div.builderStatCard {
 }
 
 .builderStatCard p {
+    font-size: 14px;
+}
+
+.builderStatCard h5 {
     font-size: 14px;
 }
 
