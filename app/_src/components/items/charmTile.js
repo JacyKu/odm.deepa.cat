@@ -3,6 +3,7 @@ import CharmFormatter from '../../utils/items/charmFormatter';
 import TranslatableText from '../translatableText';
 import React from 'react';
 import { useLowResource } from '../lowResourceContext';
+import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 
 function camelCase(str) {
     if (!str) return '';
@@ -70,18 +71,48 @@ function doesStyleExist(className) {
 export default function CharmTile(data) {
     const item = data.item;
     const [cssClass, setCssClass] = React.useState(getCharmSheetClass(item.name));
+    const [baseBackgroundClass, setBaseBackgroundClass] = React.useState('monumenta-charms');
+    const [spriteMap, setSpriteMap] = React.useState(null);
     const { lowRes } = useLowResource();
 
     let formattedCharm = CharmFormatter.formatCharm(item.stats);
 
     React.useEffect(() => {
+        let active = true;
+        loadItemSpriteMap().then((map) => {
+            if (active) {
+                setSpriteMap(map);
+            }
+        });
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        // Prefer the explicit mapping generated from the texture pack.
+        const mappedClass = getMappedSpriteClass(spriteMap, item.name);
+        if (mappedClass && doesStyleExist(mappedClass)) {
+            setBaseBackgroundClass('monumenta-items');
+            setCssClass(mappedClass);
+            return;
+        }
+        if (mappedClass && !spriteMap) {
+            // Map still loading (stale cache or first fetch); the class was
+            // found via the already-loaded map, so use it.
+            setBaseBackgroundClass('monumenta-items');
+            setCssClass(mappedClass);
+            return;
+        }
+
+        // The charm doesn't have its own texture on the itemsheet, and must be defaulted to the default charms.
+        setBaseBackgroundClass('monumenta-charms');
         if (!doesStyleExist(getCharmSheetClass(item.name))) {
-            // The charm doesn't have its own texture on the spritesheet, and must be defaulted to the default charms.
             setCssClass(`monumenta-${getImageName(item.tier, item.class_name, item.power)}`);
         } else {
             setCssClass(getCharmSheetClass(item.name));
         }
-    }, [item.name, item.tier, item.class_name, item.power]);
+    }, [item.name, item.tier, item.class_name, item.power, spriteMap]);
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
@@ -89,7 +120,7 @@ export default function CharmTile(data) {
                 {lowRes ? (
                     <div className={styles.lowResIcon}></div>
                 ) : (
-                    <div className={['monumenta-charms', cssClass].join(' ')}></div>
+                    <div className={[baseBackgroundClass, cssClass].join(' ')}></div>
                 )}
             </div>
             <span className={`${styles[camelCase(item.location)]} ${styles[camelCase(item.tier)]} ${styles.name}`}>
