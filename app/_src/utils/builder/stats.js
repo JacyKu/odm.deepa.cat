@@ -2,6 +2,28 @@ import Percentage from './percentage';
 
 const types = ['mainhand', 'offhand', 'helmet', 'chestplate', 'leggings', 'boots'];
 
+// Delve infusions (from https://monumenta.wiki.gg/wiki/Delve_Infusions and
+// com.playmonumenta.plugins.itemstats.infusions.*). All are calculated at level
+// IV (max), or level V when Revelation is enabled. Per-level values:
+const DELVE_GEAR_DAMAGE_PCT_PER_LEVEL = {
+    Vengeful: 2,
+    Execution: 1.5,
+    Fervor: 1.5,
+    Choler: 1,
+    Celestial: 1.5,
+};
+const DELVE_ATTACK_SPEED_PER_LEVEL = 0.015; // Grace
+const DELVE_HEALING_PER_LEVEL = 0.015; // Nutriment
+const DELVE_REGEN_PER_LEVEL = 0.04; // Soothing
+const DELVE_KB_PER_LEVEL = 0.8; // Unyielding (0.08 attribute per level, in builder raw units where 1 raw = 10%)
+const DELVE_COOLDOWN_PER_LEVEL = 0.01; // Epoch
+const DELVE_EXPEDITE_SPEED_PER_LEVEL = 0.0075; // Expedite (3 stacks)
+const DELVE_ARDOR_SPEED_PER_LEVEL = 0.02; // Ardor
+const DELVE_CARAPACE_DR_PER_LEVEL = 0.0125; // Carapace
+const DELVE_FUELED_DR_PER_LEVEL = 0.003; // Fueled (4 mobs)
+const DELVE_ORBITAL_DR_PER_LEVEL = 0.015; // Orbital (scalable types)
+const DELVE_PENNATE_FALL_PER_LEVEL = 0.05; // Pennate (fall only)
+
 class Stats {
     constructor(itemData, formData, enabledBoxes, extraStats, enabledClassAbilityBuffs) {
         this.region = Number(formData.region);
@@ -36,6 +58,17 @@ class Stats {
                         : undefined
                     : undefined;
         });
+
+        // Delve infusions, read from the hidden delveInfusion-<slot> form fields.
+        // All are assumed at level IV; the Revelation checkbox raises them to level V.
+        this.delveInfusions = {};
+        types.forEach((type) => {
+            const name = formData[`delveInfusion-${type}`];
+            if (name && name !== 'None') this.delveInfusions[type] = name;
+        });
+        this.delveInfusionNames = Object.values(this.delveInfusions);
+        this.delveLevel = formData.revelation === '1' ? 5 : 4;
+        this.hasDelveInfusion = (name) => this.delveInfusionNames.includes(name);
 
         this.situationals = {
             shielding: { enabled: enabledBoxes.shielding, level: 0 },
@@ -79,7 +112,9 @@ class Stats {
         this.focus = formData.focus ? formData.focus : 0;
         this.perspicacity = formData.perspicacity ? formData.perspicacity : 0;
 
-        this.currentHealthPercent = formData.health ? new Percentage(Math.max(1, Number(formData.health))) : new Percentage(100);
+        this.currentHealthPercent = formData.health
+            ? new Percentage(Math.max(1, Number(formData.health)))
+            : new Percentage(100);
         this.situationalCap = [20, 30, 36][this.region - 1];
         this.situationalEHPScaling = [0.2, 0.25, 0.3][this.region - 1];
         this.damageInfusionsMultiplier = 0.75 + 0.25 * this.region;
@@ -116,6 +151,10 @@ class Stats {
                     .reduce((accumulator, val) => accumulator * val, 1);
             }
         }
+
+        // Grace: MULTIPLY_SCALAR_1 on the attack speed attribute (1.5% per level).
+        if (this.hasDelveInfusion('Grace'))
+            this.extraAttackSpeedMultiplier *= 1 + DELVE_ATTACK_SPEED_PER_LEVEL * this.delveLevel;
 
         this.setDefaultValues();
         this.sumAllStats();
@@ -174,6 +213,7 @@ class Stats {
         this.attackDamagePercent.add(abyssalSit);
         this.attackDamagePercent.add(skyseekerSit);
         this.attackDamagePercent.add(retaliationSit);
+        this.attackDamagePercent.add(this.getDelveGearDamagePct());
 
         // class damage
         if (this.enabledClassAbilityBuffs.weapon_mastery) {
@@ -259,6 +299,7 @@ class Stats {
         this.projectileDamagePercent.add(abyssalSit);
         this.projectileDamagePercent.add(skyseekerSit);
         this.projectileDamagePercent.add(retaliationSit * 0.5);
+        this.projectileDamagePercent.add(this.getDelveGearDamagePct());
 
         // class damage
         if (this.enabledClassAbilityBuffs.versatile) {
@@ -297,6 +338,7 @@ class Stats {
         this.magicDamagePercent.add(fractalSit);
         this.magicDamagePercent.add(skyseekerSit);
         this.magicDamagePercent.add(retaliationSit * 0.5);
+        this.magicDamagePercent.add(this.getDelveGearDamagePct());
         if (this.fullItemData.mainhand?.stats?.alchemical_utensil) {
             this.magicDamagePercent.add(firstStrikeSit);
         }
@@ -313,6 +355,9 @@ class Stats {
         // misc
         this.spellCooldownPercent = this.spellCooldownPercent.mul(Math.pow(0.95, this.aptitude), false);
         this.spellCooldownPercent = this.spellCooldownPercent.mul(Math.pow(1.05, this.ineptitude), false);
+        // Epoch: class ability cooldowns reduced by 1% per level.
+        if (this.hasDelveInfusion('Epoch'))
+            this.spellCooldownPercent.mul(1 - DELVE_COOLDOWN_PER_LEVEL * this.delveLevel, false);
 
         // final damage
         let magicMultiplier =
@@ -431,7 +476,16 @@ class Stats {
         ).toFixedPerc(2);
     }
 
-    calculateDamageTaken(noArmor, prot, fragility, protmodifier, armor, agility, usesSituationals) {
+    calculateDamageTaken(
+        noArmor,
+        prot,
+        fragility,
+        protmodifier,
+        armor,
+        agility,
+        usesSituationals,
+        delveMultiplier = 1
+    ) {
         let damageTaken = {};
         let worldlyProtDR = 0.025 * (this.region + 1);
         let worldlyProtMultiplier = 1 - this.worldlyProtection * worldlyProtDR;
@@ -541,14 +595,16 @@ class Stats {
             (1 - this.tenacity * 0.005) *
             this.extraResistanceMultiplier.val *
             bonusResistanceMultiplier *
-            situationalResistanceMultiplier;
+            situationalResistanceMultiplier *
+            delveMultiplier;
 
         damageTaken.secondwind =
             damageTaken.secondwind *
             (1 - this.tenacity * 0.005) *
             this.extraResistanceMultiplier.val *
             bonusResistanceMultiplier *
-            situationalResistanceMultiplier;
+            situationalResistanceMultiplier *
+            delveMultiplier;
 
         return damageTaken;
     }
@@ -575,6 +631,22 @@ class Stats {
         let halfArmor = armor / 2;
         let halfAgility = agility / 2;
 
+        // Delve infusion damage reduction multipliers:
+        // Carapace (all damage) and Fueled (all damage, capped at 4 afflicted mobs)
+        // apply everywhere; Orbital applies to scalable types (everything except
+        // fall/true/unscalable); Pennate only applies to fall damage.
+        let delveCommonMultiplier = 1;
+        if (this.hasDelveInfusion('Carapace'))
+            delveCommonMultiplier *= 1 - DELVE_CARAPACE_DR_PER_LEVEL * this.delveLevel;
+        if (this.hasDelveInfusion('Fueled'))
+            delveCommonMultiplier *= 1 - DELVE_FUELED_DR_PER_LEVEL * 4 * this.delveLevel;
+        const delveOrbitalMultiplier = this.hasDelveInfusion('Orbital')
+            ? 1 - DELVE_ORBITAL_DR_PER_LEVEL * this.delveLevel
+            : 1;
+        const delvePennateMultiplier = this.hasDelveInfusion('Pennate')
+            ? 1 - DELVE_PENNATE_FALL_PER_LEVEL * this.delveLevel
+            : 1;
+
         let meleeDamage = this.calculateDamageTaken(
             hasNothing,
             this.meleeProt,
@@ -582,7 +654,8 @@ class Stats {
             2,
             armor,
             agility,
-            true
+            true,
+            delveCommonMultiplier * delveOrbitalMultiplier
         );
         let projectileDamage = this.calculateDamageTaken(
             hasNothing,
@@ -591,7 +664,8 @@ class Stats {
             2,
             armor,
             agility,
-            true
+            true,
+            delveCommonMultiplier * delveOrbitalMultiplier
         );
         let magicDamage = this.calculateDamageTaken(
             hasNothing,
@@ -600,7 +674,8 @@ class Stats {
             2,
             armor,
             agility,
-            true
+            true,
+            delveCommonMultiplier * delveOrbitalMultiplier
         );
         let blastDamage = this.calculateDamageTaken(
             hasNothing,
@@ -609,7 +684,8 @@ class Stats {
             2,
             armor,
             agility,
-            true
+            true,
+            delveCommonMultiplier * delveOrbitalMultiplier
         );
         let fireDamage = this.calculateDamageTaken(
             hasNothing,
@@ -618,10 +694,29 @@ class Stats {
             2,
             halfArmor,
             halfAgility,
-            false
+            false,
+            delveCommonMultiplier * delveOrbitalMultiplier
         );
-        let fallDamage = this.calculateDamageTaken(hasNothing, this.fallProt, 0, 3, halfArmor, halfAgility, false);
-        let ailmentDamage = this.calculateDamageTaken(true, 0, 0, 0, 0, 0, false);
+        let fallDamage = this.calculateDamageTaken(
+            hasNothing,
+            this.fallProt,
+            0,
+            3,
+            halfArmor,
+            halfAgility,
+            false,
+            delveCommonMultiplier * delvePennateMultiplier
+        );
+        let ailmentDamage = this.calculateDamageTaken(
+            true,
+            0,
+            0,
+            0,
+            0,
+            0,
+            false,
+            delveCommonMultiplier * delveOrbitalMultiplier
+        );
 
         let reductions = {
             melee: {
@@ -670,7 +765,6 @@ class Stats {
     }
 
     sumEnchantmentStat(itemStats, enchName, perLevelMultiplier) {
-        // console.log("summing up ",itemStats," value of ",enchName," with multiplier ", perLevelMultiplier)
         if (!itemStats) return 0;
         const value = itemStats[enchName];
         if (value === undefined) {
@@ -682,10 +776,21 @@ class Stats {
         return Number(value) * perLevelMultiplier;
     }
 
+    getDelveGearDamagePct() {
+        let total = 0;
+        for (const name of this.delveInfusionNames) {
+            total += (DELVE_GEAR_DAMAGE_PCT_PER_LEVEL[name] || 0) * this.delveLevel;
+        }
+        return total;
+    }
+
     adjustStats() {
         /*
         Minor calculations to adjust the stat values
         */
+        // Nutriment: extra healing multiplier (1.5% per level).
+        if (this.hasDelveInfusion('Nutriment'))
+            this.healingRate.mul(1 + DELVE_HEALING_PER_LEVEL * this.delveLevel, false);
         // Warrior Toughness: +10%/+20% max health, +5% more when enhanced.
         if (this.enabledClassAbilityBuffs.toughness_lv1) {
             this.healthPercent.add(this.enabledClassAbilityBuffs.toughness_lv2 ? 20 : 10);
@@ -709,11 +814,20 @@ class Stats {
                 false
             )
             .mul(this.extraSpeedMultiplier, false)
+            // Expedite: (0.75% * level * 3 stacks) movement speed while damaging with abilities.
+            .mul(
+                this.hasDelveInfusion('Expedite') ? 1 + DELVE_EXPEDITE_SPEED_PER_LEVEL * 3 * this.delveLevel : 1,
+                false
+            )
+            // Ardor: (2% * level) speed after mining a spawner outside of water.
+            .mul(this.hasDelveInfusion('Ardor') ? 1 + DELVE_ARDOR_SPEED_PER_LEVEL * this.delveLevel : 1, false)
             .toFixedPerc(2);
 
         // Fix knockback resistance to be percentage and cap at 100
         if (this.enabledClassAbilityBuffs.formidable) this.knockbackRes += 2;
         if (this.enabledClassAbilityBuffs.taboo) this.knockbackRes += 5;
+        // Unyielding: additive (8% * level) knockback resistance.
+        if (this.hasDelveInfusion('Unyielding')) this.knockbackRes += DELVE_KB_PER_LEVEL * this.delveLevel;
         this.knockbackRes = this.knockbackRes > 10 ? 100 : this.knockbackRes * 10;
         // Calculate effective healing rate
         let effHealingNonRounded = new Percentage((20 / this.healthFinal) * this.healingRate.val, false);
@@ -723,6 +837,8 @@ class Stats {
         let regenPerSecNonRounded = (1 / 3) * Math.sqrt(this.baseRegenLevel) * this.healingRate.val;
         regenPerSecNonRounded -= (1 / 3) * this.baseVeilcurseLevel;
         if (this.enabledClassAbilityBuffs.taboo_burst) regenPerSecNonRounded -= 0.07 * this.healthFinal;
+        // Soothing: regenerates (0.04 * level) health per second.
+        if (this.hasDelveInfusion('Soothing')) regenPerSecNonRounded += DELVE_REGEN_PER_LEVEL * this.delveLevel;
         this.regenPerSec = regenPerSecNonRounded.toFixed(2);
         // Calculate %hp regen per sec
         this.regenPerSecPercent = new Percentage(regenPerSecNonRounded / this.healthFinal, false).toFixedPerc(2);

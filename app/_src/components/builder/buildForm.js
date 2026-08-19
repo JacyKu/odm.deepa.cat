@@ -18,6 +18,33 @@ import CharmSelector, { resolveCharmKey, computeCharmTotals } from './charmSelec
 import CharmFormatter from '../../utils/items/charmFormatter';
 import CharmShortener from '../../utils/builder/charmShortener';
 import { decodeBuildParam, encodeBuildParam, normalizeBuildParam } from '../../utils/builder/buildUrlCodec';
+import { DELVE_INFUSIONS } from '../../data/delveInfusions';
+
+const infusionSelectTheme = (theme) => ({
+    ...theme,
+    borderRadius: 0,
+    colors: {
+        ...theme.colors,
+        primary: 'var(--text-1)',
+        primary25: 'var(--surface-2)',
+        neutral0: 'var(--glass-1)',
+        neutral5: 'var(--glass-2)',
+        neutral10: 'var(--glass-2)',
+        neutral20: 'var(--control-border)',
+        neutral30: 'var(--control-border-hover)',
+        neutral60: 'var(--text-2)',
+        neutral80: 'var(--text-1)',
+    },
+});
+
+const infusionSelectStyles = {
+    container: (base) => ({ ...base, width: '100%', minWidth: 120 }),
+    control: (base) => ({ ...base, minHeight: 42, height: 42 }),
+    valueContainer: (base) => ({ ...base, height: 42, paddingTop: 0, paddingBottom: 0 }),
+    indicatorsContainer: (base) => ({ ...base, height: 42 }),
+    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+    menu: (base) => ({ ...base, zIndex: 9999 }),
+};
 
 const emptyBuild = {
     mainhand: 'None',
@@ -400,11 +427,75 @@ export default function BuildForm({
     const [czSelectedTree, setCzSelectedTree] = React.useState(CZ_MAIN_TREES[0]);
     const [czRarityOpen, setCzRarityOpen] = React.useState(null); // ability name with the rarity menu open
     const [charmStatsOpen, setCharmStatsOpen] = React.useState(false);
+    const [delveOpen, setDelveOpen] = React.useState(false);
+    const [delveInfusions, setDelveInfusions] = React.useState({}); // slot -> infusion name (always level IV)
+    const [revelation, setRevelation] = React.useState(false);
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
         setStatInputs(next);
         recalcAndSyncUrl();
+    }
+
+    function revelationChanged(event) {
+        setRevelation(event.target.checked);
+        // Native checkbox state is already in FormData at this point (see checkboxChanged).
+        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+    }
+
+    function delveChanged(slot, option) {
+        setDelveInfusions((prev) => {
+            const next = { ...prev };
+            if (option) {
+                next[slot] = option.value;
+            } else {
+                delete next[slot];
+            }
+            return next;
+        });
+        // FormData is stale right after a Select change, so inject the new value
+        // manually (same pattern as itemChanged) and recalculate.
+        let entries = Array.from(new FormData(formRef.current).entries());
+        for (let i = 0; i < entries.length; i++) {
+            if (entries[i][0] == `delveInfusion-${slot}`) entries[i][1] = option ? option.value : 'None';
+        }
+        const itemNames = Object.fromEntries(entries);
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+        const token = makeBuildString(null, entries);
+        syncUrl(getStsBase() + '/builder/' + token);
+    }
+
+    function delveSlotSelects(slot) {
+        const hasItem = stats.itemNames && stats.itemNames[slot] && stats.itemNames[slot] !== 'None';
+        const cur = delveInfusions[slot];
+        const infusionOpts = DELVE_INFUSIONS.filter((i) => i.region <= regionValue).map((i) => ({
+            value: i.name,
+            label: i.name,
+        }));
+        return (
+            <div className="mt-3">
+                <Select
+                    instanceId={`delve-${slot}`}
+                    name={`delveInfusion-${slot}`}
+                    isDisabled={!hasItem}
+                    isClearable
+                    isSearchable
+                    options={infusionOpts}
+                    value={cur ? { value: cur, label: cur } : null}
+                    onChange={(opt) => delveChanged(slot, opt)}
+                    placeholder="Infusion"
+                    menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                    menuPosition="fixed"
+                    theme={infusionSelectTheme}
+                    styles={infusionSelectStyles}
+                />
+            </div>
+        );
     }
 
     function regionChanged(newValue) {
@@ -1539,6 +1630,26 @@ export default function BuildForm({
                             />
                         </div>
                     )}
+                    <label className={`${styles.delveToggle} ${delveOpen ? styles.delveToggleActive : ''} ms-3`}>
+                        <input
+                            type="checkbox"
+                            checked={delveOpen}
+                            onChange={(e) => setDelveOpen(e.target.checked)}
+                            aria-label="Delve Infusions"
+                        />
+                        Delve Infusions
+                    </label>
+                    <label className={`${styles.delveToggle} ${revelation ? styles.delveToggleActive : ''} ms-3`}>
+                        <input
+                            type="checkbox"
+                            name="revelation"
+                            value="1"
+                            checked={revelation}
+                            onChange={revelationChanged}
+                            aria-label="Revelation"
+                        />
+                        Revelation
+                    </label>
                 </div>
                 <BuilderHeader
                     text={buildName}
@@ -1921,6 +2032,7 @@ export default function BuildForm({
                         )}
                         onChange={itemChanged}
                     ></SelectInput>
+                    {delveOpen && delveSlotSelects('mainhand')}
                 </div>
                 <div className="col-6 col-md-3 col-lg-2 text-center">
                     <TranslatableText identifier="items.type.offhand"></TranslatableText>
@@ -1932,6 +2044,7 @@ export default function BuildForm({
                         sortableStats={getRelevantItems(['offhand', 'offhand shield', 'offhand sword'], itemData)}
                         onChange={itemChanged}
                     ></SelectInput>
+                    {delveOpen && delveSlotSelects('offhand')}
                 </div>
                 <div className="col-6 col-md-3 col-lg-2 text-center">
                     <TranslatableText identifier="items.type.helmet"></TranslatableText>
@@ -1943,6 +2056,7 @@ export default function BuildForm({
                         sortableStats={getRelevantItems(['helmet'], itemData)}
                         onChange={itemChanged}
                     ></SelectInput>
+                    {delveOpen && delveSlotSelects('helmet')}
                 </div>
                 <div className="col-6 col-md-3 col-lg-2 text-center">
                     <TranslatableText identifier="items.type.chestplate"></TranslatableText>
@@ -1954,6 +2068,7 @@ export default function BuildForm({
                         sortableStats={getRelevantItems(['chestplate'], itemData)}
                         onChange={itemChanged}
                     ></SelectInput>
+                    {delveOpen && delveSlotSelects('chestplate')}
                 </div>
                 <div className="col-6 col-md-3 col-lg-2 text-center">
                     <TranslatableText identifier="items.type.leggings"></TranslatableText>
@@ -1965,6 +2080,7 @@ export default function BuildForm({
                         sortableStats={getRelevantItems(['leggings'], itemData)}
                         onChange={itemChanged}
                     ></SelectInput>
+                    {delveOpen && delveSlotSelects('leggings')}
                 </div>
                 <div className="col-6 col-md-3 col-lg-2 text-center">
                     <TranslatableText identifier="items.type.boots"></TranslatableText>
@@ -1976,6 +2092,7 @@ export default function BuildForm({
                         sortableStats={getRelevantItems(['boots'], itemData)}
                         onChange={itemChanged}
                     ></SelectInput>
+                    {delveOpen && delveSlotSelects('boots')}
                 </div>
             </div>
             <div className="row justify-content-center mb-1">
