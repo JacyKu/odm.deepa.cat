@@ -1702,12 +1702,23 @@ export default function BuildForm({
                                 <span className={styles.skillsTitle}>
                                     {regionValue === 2 ? 'Darkest Depths' : 'Celestial Zenith'}
                                 </span>
-                                <span className={styles.skillTotal}>{czActiveCount} / 4 active abilities</span>
-                                {czActiveCount > 4 && (
-                                    <span className="text-danger fw-bold">
-                                        You can't use more than 4 actives above ascension 12!
-                                    </span>
-                                )}
+                                <span className={styles.skillTotal}>
+                                    {regionValue === 3 ? (
+                                        <>
+                                            {czActiveCount} / 4 active abilities
+                                            {czActiveCount > 4 && (
+                                                <span className="text-danger fw-bold">
+                                                    {' '}
+                                                    You can't use more than 4 actives above ascension 12!
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {czActiveCount} active {czActiveCount === 1 ? 'ability' : 'abilities'}
+                                        </>
+                                    )}
+                                </span>
                                 <span className={styles.skillTotal}>
                                     Class skills are disabled in {regionValue === 2 ? 'the Depths' : 'Celestial Zenith'}
                                     .
