@@ -209,5 +209,17 @@
     "builder.multipliers.health": "生命值倍率",
     "builder.multipliers.speed": "移速倍率",
     "items.searchForm.charmPower": "护符威力",
-    "items.searchForm.not": "排除"
+    "items.searchForm.not": "排除",
+    "auth.loginWithDiscord": "使用 Discord 登录",
+    "auth.myBuilds": "我的配装",
+    "builds.title": "我的配装",
+    "builds.loading": "加载中...",
+    "builds.loginRequired": "登录 Discord 以查看和管理你保存的配装。",
+    "builds.empty": "暂无保存的配装。先创建配装，再点击\"复制短链接\"。",
+    "builds.rename": "重命名",
+    "builds.renameError": "无法重命名该配装。",
+    "builds.delete": "删除",
+    "builds.deleteError": "无法删除该配装。",
+    "builds.confirmDelete": "确认？",
+    "builds.notes": "备注"
 }

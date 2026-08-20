@@ -146,7 +146,8 @@ export function getLinkPreviewData(build, itemData, skillsData) {
 }
 
 // Discord wraps long embed descriptions itself, so charm names just join in one line.
-export function getLinkPreviewDescription(build, itemData, skillsData) {
+// `infusions` (optional) is a slot -> infusion-name map from the DB state.
+export function getLinkPreviewDescription(build, itemData, skillsData, infusions) {
     const data = getLinkPreviewData(build, itemData, skillsData);
     if (!data) return '';
 
@@ -194,6 +195,13 @@ export function getLinkPreviewDescription(build, itemData, skillsData) {
 
     if (data.ascension > 0) {
         parts.push(`🪜 Ascension ${data.ascension}`);
+    }
+
+    if (infusions && Object.keys(infusions).length > 0) {
+        const names = Object.values(infusions).filter((v) => v && v !== 'None');
+        if (names.length > 0) {
+            parts.push(`✨ Infusions: ${names.join(', ')}`);
+        }
     }
 
     // Discord renders newlines in embed descriptions.

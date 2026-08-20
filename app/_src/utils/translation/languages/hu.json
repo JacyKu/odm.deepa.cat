@@ -235,5 +235,17 @@
     "builder.multipliers.health": "Health Multipliers",
     "builder.multipliers.speed": "Speed Multipliers",
     "items.searchForm.charmPower": "Charm erő",
-    "items.searchForm.not": "Nem"
+    "items.searchForm.not": "Nem",
+    "auth.loginWithDiscord": "Bejelentkezés Discorddal",
+    "auth.myBuilds": "Az építményeim",
+    "builds.title": "Az építményeim",
+    "builds.loading": "Betöltés...",
+    "builds.loginRequired": "Jelentkezz be Discorddal a mentett építményeid megtekintéséhez és kezeléséhez.",
+    "builds.empty": "Még nincs mentett építményed. Építs valamit, majd nyomd meg a \"Rövid link másolása\" gombot.",
+    "builds.rename": "Átnevezés",
+    "builds.renameError": "Nem sikerült átnevezni az építményt.",
+    "builds.delete": "Törlés",
+    "builds.deleteError": "Nem sikerült törölni az építményt.",
+    "builds.confirmDelete": "Megerősíted?",
+    "builds.notes": "Jegyzetek"
 }

@@ -235,5 +235,17 @@
     "builder.multipliers.health": "Health Multipliers",
     "builder.multipliers.speed": "Speed Multipliers",
     "items.searchForm.charmPower": "護符威力",
-    "items.searchForm.not": "排除"
+    "items.searchForm.not": "排除",
+    "auth.loginWithDiscord": "使用 Discord 登入",
+    "auth.myBuilds": "我的配裝",
+    "builds.title": "我的配裝",
+    "builds.loading": "載入中...",
+    "builds.loginRequired": "登入 Discord 以查看和管理你儲存的配裝。",
+    "builds.empty": "尚無儲存的配裝。先建立配裝，再按「複製短連結」。",
+    "builds.rename": "重新命名",
+    "builds.renameError": "無法重新命名此配裝。",
+    "builds.delete": "刪除",
+    "builds.deleteError": "無法刪除此配裝。",
+    "builds.confirmDelete": "確認？",
+    "builds.notes": "備註"
 }

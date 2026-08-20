@@ -68,7 +68,11 @@ class Stats {
         });
         this.delveInfusionNames = Object.values(this.delveInfusions);
         this.delveLevel = formData.revelation === '1' ? 5 : 4;
-        this.hasDelveInfusion = (name) => this.delveInfusionNames.includes(name);
+        // An infusion's stat effect only counts while its situational checkbox
+        // is ticked (mirrors the infusion's in-game condition).
+        this.hasDelveInfusion = (name) =>
+            this.delveInfusionNames.includes(name) &&
+            Boolean(this.enabledBoxes && this.enabledBoxes[name.toLowerCase()]);
 
         this.situationals = {
             shielding: { enabled: enabledBoxes.shielding, level: 0 },
@@ -779,6 +783,7 @@ class Stats {
     getDelveGearDamagePct() {
         let total = 0;
         for (const name of this.delveInfusionNames) {
+            if (!this.hasDelveInfusion(name)) continue;
             total += (DELVE_GEAR_DAMAGE_PCT_PER_LEVEL[name] || 0) * this.delveLevel;
         }
         return total;

@@ -359,5 +359,17 @@
     "items.enchant.celerity": "Gain 2.5% Speed per level after not taking or dealing damage for 5 seconds.",
     "items.enchant.thornsDamage": "Deal (level) damage to a mob when it damages you with melee or projectile damage.",
     "items.enchant.fueled": "Gain 0.3% Damage Reduction per level for every enemy that is on fire (vanilla or Inferno), slowed, or stunned within 8 blocks, capped at 4 mobs.",
-    "items.enchant.iceaspect": "Applies (level * 10)% Slowness for 4 seconds when dealing melee or projectile damage. Deals 1 extra damage to Blazes."
+    "items.enchant.iceaspect": "Applies (level * 10)% Slowness for 4 seconds when dealing melee or projectile damage. Deals 1 extra damage to Blazes.",
+    "auth.loginWithDiscord": "Log in with Discord",
+    "auth.myBuilds": "My Builds",
+    "builds.title": "My Builds",
+    "builds.loading": "Loading...",
+    "builds.loginRequired": "Log in with Discord to see and manage your saved builds.",
+    "builds.empty": "No saved builds yet. Build something, then hit \"Copy short link\".",
+    "builds.rename": "Rename",
+    "builds.renameError": "Could not rename the build.",
+    "builds.delete": "Delete",
+    "builds.deleteError": "Could not delete the build.",
+    "builds.confirmDelete": "Confirm?",
+    "builds.notes": "Notes"
 }

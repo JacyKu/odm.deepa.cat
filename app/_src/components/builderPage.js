@@ -4,7 +4,7 @@ import React from 'react';
 import BuildForm from './builder/buildForm';
 import styles from '../styles/Items.module.css';
 
-export default function BuilderPage({ build, itemData }) {
+export default function BuilderPage({ build, itemData, savedState, savedName, notes, canEditNotes, buildId }) {
     const [builderHeaderText, setBuilderHeaderText] = React.useState('Monumenta Builder');
     const [itemsToDisplay, setItemsToDisplay] = React.useState({});
 
@@ -36,6 +36,11 @@ export default function BuilderPage({ build, itemData }) {
                 <BuildForm
                     update={change}
                     build={build}
+                    savedState={savedState}
+                    savedName={savedName}
+                    notes={notes}
+                    canEditNotes={canEditNotes}
+                    buildId={buildId}
                     parentLoaded={parentLoaded}
                     itemData={itemData}
                     itemsToDisplay={itemsToDisplay}

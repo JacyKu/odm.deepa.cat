@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { saveBuild } from '../../../../lib/sts-builds';
-import { decodeBuildParam } from '../../../_src/utils/builder/buildUrlCodec';
+import { decodeBuildParam, getBuildTokenVersion } from '../../../_src/utils/builder/buildUrlCodec';
 import { getItemData } from '../../../_src/utils/itemsData';
+import { getDiscordUser } from '../../../../lib/session';
 
 export async function POST(request) {
     const body = await request.json().catch(() => null);
@@ -16,6 +17,27 @@ export async function POST(request) {
         return NextResponse.json({ error: 'invalid build' }, { status: 400 });
     }
 
-    const id = saveBuild(token);
-    return NextResponse.json({ id, url: '/sts/b/' + id });
+    const user = await getDiscordUser();
+    const state = {
+        token,
+        infusions: body.infusions && typeof body.infusions === 'object' ? body.infusions : {},
+        revelation: Boolean(body.revelation),
+    };
+    const result = saveBuild({
+        state,
+        userId: user ? user.id : null,
+        name: body.name || null,
+        // Notes are a signed-in feature: anonymous saves never carry them.
+        notes: user ? body.notes || null : null,
+    });
+    if (!result) {
+        return NextResponse.json({ error: 'invalid build' }, { status: 400 });
+    }
+    const tokenVersion = getBuildTokenVersion(token) ?? '';
+    return NextResponse.json({
+        id: result.id,
+        isNew: result.isNew,
+        savedToAccount: Boolean(user),
+        url: `/b/v${tokenVersion}/${result.id}`,
+    });
 }

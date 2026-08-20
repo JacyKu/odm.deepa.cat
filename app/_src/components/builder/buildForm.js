@@ -17,7 +17,12 @@ import ListSelector from './listSelector';
 import CharmSelector, { resolveCharmKey, computeCharmTotals } from './charmSelector';
 import CharmFormatter from '../../utils/items/charmFormatter';
 import CharmShortener from '../../utils/builder/charmShortener';
-import { decodeBuildParam, encodeBuildParam, normalizeBuildParam } from '../../utils/builder/buildUrlCodec';
+import {
+    decodeBuildParam,
+    encodeBuildParam,
+    normalizeBuildParam,
+    getBuildTokenVersion,
+} from '../../utils/builder/buildUrlCodec';
 import { DELVE_INFUSIONS } from '../../data/delveInfusions';
 
 const infusionSelectTheme = (theme) => ({
@@ -87,6 +92,25 @@ const enabledBoxes = {
     retaliation_normal: false,
     retaliation_elite: false,
     retaliation_boss: false,
+
+    // Delve infusion situationals: the infusion's stat effect only counts
+    // while its checkbox is ticked (matches the infusion's in-game condition).
+    vengeful: false,
+    execution: false,
+    fervor: false,
+    choler: false,
+    celestial: false,
+    grace: false,
+    nutriment: false,
+    soothing: false,
+    unyielding: false,
+    epoch: false,
+    expedite: false,
+    ardor: false,
+    carapace: false,
+    fueled: false,
+    orbital: false,
+    pennate: false,
 };
 
 const situationalDefenses = [
@@ -257,10 +281,11 @@ function formatSituationalName(situ) {
     return ret;
 }
 
-function generateSituationalCheckboxes(itemsToDisplay, checkboxChanged) {
+function generateSituationalCheckboxes(itemsToDisplay, checkboxChanged, delveInfusions) {
     let tempDef = [];
     let tempFlatDmg = [];
     let tempPercentDmg = [];
+    let tempInfusions = [];
 
     situationalDefenses.forEach(function (situ) {
         if (!itemsToDisplay.situationals) return;
@@ -317,6 +342,24 @@ function generateSituationalCheckboxes(itemsToDisplay, checkboxChanged) {
             );
         });
     }
+    // One situational chip per equipped delve infusion; the stat effect only
+    // counts while its checkbox is ticked.
+    if (delveInfusions) {
+        const seen = new Set();
+        Object.values(delveInfusions).forEach((infusion) => {
+            if (!infusion || infusion === 'None' || seen.has(infusion)) return;
+            seen.add(infusion);
+            tempInfusions.push(
+                <div className="col-auto" key={'situationalbox-infusion-' + infusion}>
+                    <CheckboxWithLabel
+                        name={infusion}
+                        checked={enabledBoxes[infusion.toLowerCase()]}
+                        onChange={checkboxChanged}
+                    />
+                </div>
+            );
+        });
+    }
     /* if(itemsToDisplay.meleeDamagePercent > 100 || itemsToDisplay.projectileDamagePercent > 100){
         tempPercentDmg.push(<CheckboxWithLabel key={"situationalbox-versatile"} name="Versatile" checked={false} onChange={checkboxChanged} />)
     } */
@@ -333,6 +376,11 @@ function generateSituationalCheckboxes(itemsToDisplay, checkboxChanged) {
         // spacer between existing stuff and percent damage if both exist
     }
     temp.push(...tempPercentDmg);
+    if (temp.length > 0 && tempInfusions.length > 0) {
+        temp.push(<span key="spacer3" style={{ width: '10px', padding: '0px' }}></span>);
+        // spacer between enchantment situationals and infusion situationals if both exist
+    }
+    temp.push(...tempInfusions);
     if (temp.length == 0) {
         temp.push(
             <div className="col-auto" key="builder.info.noSituationals">
@@ -397,6 +445,11 @@ const CZ_MAIN_TREES = [
 export default function BuildForm({
     update,
     build,
+    savedState,
+    savedName,
+    notes,
+    canEditNotes,
+    buildId,
     parentLoaded,
     itemData,
     itemsToDisplay,
@@ -412,6 +465,13 @@ export default function BuildForm({
     const [skillPoints, setSkillPoints] = React.useState({});
     const [classSelectKey, setClassSelectKey] = React.useState(0);
     const [saveState, setSaveState] = React.useState(null); // 'saving' | 'copied' | 'error'
+    const [savedAnonymous, setSavedAnonymous] = React.useState(false);
+    // The DB row this build was opened from / saved to; edits update it in
+    // place instead of spawning a new link.
+    const [activeBuildId, setActiveBuildId] = React.useState(buildId || null);
+    const [loggedIn, setLoggedIn] = React.useState(null); // null = checking
+    const [notesDraft, setNotesDraft] = React.useState(notes || '');
+    const [notesSaveState, setNotesSaveState] = React.useState(null); // 'saving' | 'saved' | 'error'
     const [resetConfirm, setResetConfirm] = React.useState(false);
     const resetTimeoutRef = React.useRef(null);
     const [statInputs, setStatInputs] = React.useState(DEFAULT_STAT_INPUTS);
@@ -466,17 +526,24 @@ export default function BuildForm({
         const tempStats = recalcBuild(itemNames, itemData);
         setStats(tempStats);
         update(tempStats);
-        const token = makeBuildString(null, entries);
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function delveSlotSelects(slot) {
         const hasItem = stats.itemNames && stats.itemNames[slot] && stats.itemNames[slot] !== 'None';
         const cur = delveInfusions[slot];
-        const infusionOpts = DELVE_INFUSIONS.filter((i) => i.region <= regionValue).map((i) => ({
-            value: i.name,
-            label: i.name,
-        }));
+        // Only one of each infusion: already-picked infusions (on other slots)
+        // are removed from this dropdown so they can't be duplicated.
+        const pickedElsewhere = new Set(
+            Object.entries(delveInfusions)
+                .filter(([s]) => s !== slot)
+                .map(([, name]) => name)
+        );
+        const infusionOpts = DELVE_INFUSIONS.filter((i) => i.region <= regionValue && !pickedElsewhere.has(i.name)).map(
+            (i) => ({
+                value: i.name,
+                label: i.name,
+            })
+        );
         return (
             <div className="mt-3">
                 <Select
@@ -547,13 +614,6 @@ export default function BuildForm({
         const tempStats = recalcBuild(itemNames, itemData);
         setStats(tempStats);
         update(tempStats);
-        const token = makeBuildString(nextCharms, null, null, null, {
-            spec: nextSpec,
-            specSkills: nextSpecPoints,
-            enhancements: nextEnhancements,
-            czAbilities: nextCz,
-        });
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     React.useEffect(() => {
@@ -622,26 +682,11 @@ export default function BuildForm({
         }
     }
 
-    // Update the address bar without navigating: navigating to a new
-    // /builder/<token> path re-fetches the route and remounts the page,
-    // which would wipe all form state on every change.
-    function syncUrl(path) {
-        window.history.replaceState(null, '', path);
-    }
-
-    function recalcAndSyncUrl(skillsOverride, enhancementsOverride) {
+    function recalcBuildStats() {
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
         const tempStats = recalcBuild(itemNames, itemData);
         setStats(tempStats);
         update(tempStats);
-        const token = makeBuildString(
-            null,
-            null,
-            null,
-            skillsOverride,
-            enhancementsOverride ? { enhancements: enhancementsOverride } : null
-        );
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function skillPointClicked(skillId, pointIndex) {
@@ -659,10 +704,7 @@ export default function BuildForm({
             setEnhancements(nextEnhancements);
         }
         refreshClassBuffs(nextPoints, specSkillPoints, nextEnhancements);
-        recalcAndSyncUrl(
-            Object.entries(nextPoints).filter(([, pts]) => pts > 0),
-            nextEnhancements
-        );
+        recalcBuildStats();
     }
 
     function specSkillPointClicked(skillId, pointIndex) {
@@ -673,12 +715,7 @@ export default function BuildForm({
         if (next === 0) delete nextPoints[skillId];
         setSpecSkillPoints(nextPoints);
         refreshClassBuffs(skillPoints, nextPoints, enhancements);
-        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
-        const token = makeBuildString(null, null, null, null, { specSkills: nextPoints });
-        syncUrl(getStsBase() + '/builder/' + token);
+        recalcBuildStats();
     }
 
     function setAllSkillPoints(points) {
@@ -694,10 +731,7 @@ export default function BuildForm({
         setSkillPoints(next);
         if (!points) setEnhancements({});
         refreshClassBuffs(next, specSkillPoints, nextEnhancements);
-        recalcAndSyncUrl(
-            Object.entries(next).filter(([, pts]) => pts > 0),
-            nextEnhancements
-        );
+        recalcBuildStats();
     }
 
     function enhancementToggled(skillId, checked) {
@@ -708,12 +742,7 @@ export default function BuildForm({
         else delete next[skillId];
         setEnhancements(next);
         refreshClassBuffs(skillPoints, specSkillPoints, next);
-        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
-        const token = makeBuildString(null, null, null, null, { enhancements: next });
-        syncUrl(getStsBase() + '/builder/' + token);
+        recalcBuildStats();
     }
 
     function specChanged(newValue, actionMeta) {
@@ -722,12 +751,7 @@ export default function BuildForm({
         setSpecSelectKey((k) => k + 1);
         setSpecSkillPoints({});
         refreshClassBuffs(skillPoints, {}, enhancements);
-        const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
-        const token = makeBuildString(null, null, null, null, { spec: specName, specSkills: {} });
-        syncUrl(getStsBase() + '/builder/' + token);
+        recalcBuildStats();
     }
 
     function czChanged(abilityName, rarity) {
@@ -736,48 +760,139 @@ export default function BuildForm({
         if (rarity === null || rarity === undefined) delete next[abilityName];
         else next[abilityName] = rarity;
         setCzAbilities(next);
-        const token = makeBuildString(null, null, null, null, { czAbilities: next });
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function clearCz() {
         setCzAbilities({});
-        const token = makeBuildString(null, null, null, null, { czAbilities: {} });
-        syncUrl(getStsBase() + '/builder/' + token);
     }
+
+    // Save the current build. Opening a saved build (or having saved one this
+    // session) updates that row in place - same link, name and notes included.
+    // A fresh build POSTs and moves onto its new short link.
+    React.useEffect(() => {
+        fetch('/api/auth/session')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => setLoggedIn(Boolean(d && d.user)))
+            .catch(() => setLoggedIn(false));
+    }, []);
 
     function saveBuildToServer() {
         const token = makeBuildString();
-        const path = window.location.pathname;
+        const tokenVersion = getBuildTokenVersion(token) ?? '';
+        const payload = {
+            token,
+            infusions: delveInfusions,
+            revelation,
+            name: buildName !== 'Monumenta Builder' ? buildName : null,
+            notes: notesDraft.trim() ? notesDraft : null,
+        };
 
-        // Already on the short-link page with no edits: reuse the existing short link, no DB write.
-        if (path.startsWith(getStsBase() + '/b/')) {
-            setSaveState('copied');
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href).catch(() => {});
-            }
-            setTimeout(() => setSaveState(null), 2000);
-            return;
+        if (activeBuildId) {
+            setSaveState('saving');
+            setSavedAnonymous(false);
+            return fetch(`/api/v1/builds/${activeBuildId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    state: { token, infusions: delveInfusions, revelation },
+                    name: payload.name,
+                    notes: payload.notes,
+                }),
+            })
+                .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+                .then(() => {
+                    const link = window.location.origin + getStsBase() + `/b/v${tokenVersion}/${activeBuildId}`;
+                    setSaveState('copied');
+                    setSavedAnonymous(false);
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(link).catch(() => {});
+                    }
+                    setTimeout(() => setSaveState(null), 4000);
+                    return link;
+                })
+                .catch(() => {
+                    setSaveState('error');
+                    throw new Error('save failed');
+                });
         }
 
         setSaveState('saving');
-        fetch('/api/v1/builds', {
+        setSavedAnonymous(false);
+        return fetch('/api/v1/builds', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify(payload),
         })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
             .then((d) => {
-                const link = window.location.origin + getStsBase() + '/b/' + d.id;
-                // Move onto the short link so an unedited reload reuses it instead of re-saving.
-                syncUrl(getStsBase() + '/b/' + d.id);
+                const link = window.location.origin + getStsBase() + d.url;
+                // Remember the row so later edits update it instead of forking.
+                setActiveBuildId(d.id);
                 setSaveState('copied');
+                if (d.savedToAccount) {
+                    setSavedAnonymous(false);
+                } else {
+                    setSavedAnonymous(true);
+                    setTimeout(() => setSavedAnonymous(false), 7000);
+                }
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(link).catch(() => {});
                 }
-                setTimeout(() => setSaveState(null), 2000);
+                setTimeout(() => setSaveState(null), 4000);
+                return link;
             })
-            .catch(() => setSaveState('error'));
+            .catch(() => {
+                setSaveState('error');
+                throw new Error('save failed');
+            });
+    }
+
+    function copyBuildDiscord(event) {
+        saveBuildToServer()
+            .then((link) => {
+                event.target.value = 'Copied!';
+                event.target.classList.add('fw-bold');
+                setTimeout(() => {
+                    event.target.value = 'Copy link for Discord';
+                    event.target.classList.remove('fw-bold');
+                }, 3000);
+                if (!navigator.clipboard) {
+                    window.alert("Couldn't copy build to clipboard. Sadness. :(");
+                    return;
+                }
+                const classLabel = gameClass != 'none' ? gameClass.charAt(0).toUpperCase() + gameClass.slice(1) : null;
+                const tempBuildName =
+                    buildName && buildName != 'Monumenta Builder'
+                        ? buildName
+                        : classLabel
+                          ? `R${regionValue} ${spec || classLabel} build`
+                          : 'Monumenta Builder';
+                navigator.clipboard.writeText(`[${tempBuildName}](${link})`).then(
+                    function () {
+                        console.log('Copying to clipboard was successful!');
+                    },
+                    function (err) {
+                        console.error('Could not copy text: ', err);
+                    }
+                );
+            })
+            .catch(() => {});
+    }
+
+    function saveNotes() {
+        if (!activeBuildId) return;
+        setNotesSaveState('saving');
+        fetch(`/api/v1/builds/${activeBuildId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: notesDraft }),
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then(() => {
+                setNotesSaveState('saved');
+                setTimeout(() => setNotesSaveState(null), 2500);
+            })
+            .catch(() => setNotesSaveState('error'));
     }
 
     React.useEffect(() => {
@@ -829,8 +944,6 @@ export default function BuildForm({
         const tempStats = recalcBuild(itemNames, itemData);
         setStats(tempStats);
         update(tempStats);
-        const token = makeBuildString();
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     React.useEffect(() => {
@@ -996,7 +1109,43 @@ export default function BuildForm({
                 }
             }
 
-            const tempStats = recalcBuild({ ...itemNames, ...statValues }, itemData);
+            // Saved builds carry the delve infusions + Revelation checkbox in
+            // the DB (they are not part of the URL token); restore them here.
+            const loadedDelve = {};
+            if (savedState && savedState.infusions && typeof savedState.infusions === 'object') {
+                const loadedRegion = Number(statValues.region) || 3;
+                for (const [slot, infusion] of Object.entries(savedState.infusions)) {
+                    const ok = DELVE_INFUSIONS.some((i) => i.name === infusion && i.region <= loadedRegion);
+                    if (ok) loadedDelve[slot] = infusion;
+                }
+                if (Object.keys(loadedDelve).length > 0) {
+                    setDelveInfusions(loadedDelve);
+                    setDelveOpen(true);
+                }
+            }
+            const loadedRevelation = Boolean(savedState && savedState.revelation);
+            if (loadedRevelation) setRevelation(true);
+
+            // A build renamed on the "My Builds" page stores its display name in
+            // the DB; surface it in the header so re-saving keeps the new name.
+            if (savedName) {
+                setBuildName(savedName);
+            }
+
+            const delveEntries = {};
+            for (const [slot, infusion] of Object.entries(loadedDelve)) {
+                delveEntries[`delveInfusion-${slot}`] = infusion;
+            }
+
+            const tempStats = recalcBuild(
+                {
+                    ...itemNames,
+                    ...statValues,
+                    ...delveEntries,
+                    ...(loadedRevelation ? { revelation: '1' } : {}),
+                },
+                itemData
+            );
             setStats(tempStats);
             update(tempStats);
 
@@ -1087,7 +1236,6 @@ export default function BuildForm({
         const tempStats = recalcBuild(emptyBuild, itemData);
         setStats(tempStats);
         update(tempStats);
-        syncUrl(getStsBase() + '/builder');
     }
 
     function receiveMasterworkUpdate(newActiveItem, itemType) {
@@ -1121,65 +1269,10 @@ export default function BuildForm({
             value: `${newActiveItem.name}-${newActiveItem.masterwork}`,
             label: newActiveItem.name,
         });
-        const token = makeBuildString(null, Object.entries(newBuild));
-        syncUrl(getStsBase() + '/builder/' + token);
 
         const tempStats = recalcBuild(newBuild, itemData);
         setStats(tempStats);
         update(tempStats);
-    }
-
-    function copyBuild(event) {
-        let baseUrl = `${window.location.origin}${getStsBase()}/builder/`;
-        event.target.value = 'Copied!';
-        event.target.classList.add('fw-bold');
-        setTimeout(() => {
-            event.target.value = 'Share';
-            event.target.classList.remove('fw-bold');
-        }, 3000);
-
-        if (!navigator.clipboard) {
-            window.alert("Couldn't copy build to clipboard. Sadness. :(");
-            return;
-        }
-        navigator.clipboard.writeText(`${baseUrl}${makeBuildString()}`).then(
-            function () {
-                console.log('Copying to clipboard was successful!');
-            },
-            function (err) {
-                console.error('Could not copy text: ', err);
-            }
-        );
-    }
-
-    function copyBuildDiscord(event) {
-        let baseUrl = `${window.location.origin}${getStsBase()}/builder/`;
-        event.target.value = 'Copied!';
-        event.target.classList.add('fw-bold');
-        setTimeout(() => {
-            event.target.value = 'Copy link for Discord';
-            event.target.classList.remove('fw-bold');
-        }, 3000);
-        const classLabel = gameClass != 'none' ? gameClass.charAt(0).toUpperCase() + gameClass.slice(1) : null;
-        const tempBuildName =
-            buildName && buildName != 'Monumenta Builder'
-                ? buildName
-                : classLabel
-                  ? `R${regionValue} ${spec || classLabel} build`
-                  : 'Monumenta Builder';
-
-        if (!navigator.clipboard) {
-            window.alert("Couldn't copy build to clipboard. Sadness. :(");
-            return;
-        }
-        navigator.clipboard.writeText(`[${tempBuildName}](${baseUrl}${makeBuildString()})`).then(
-            function () {
-                console.log('Copying to clipboard was successful!');
-            },
-            function (err) {
-                console.error('Could not copy text: ', err);
-            }
-        );
     }
 
     function getEquipName(type) {
@@ -1337,8 +1430,6 @@ export default function BuildForm({
             })
             .filter(Boolean);
         setCharms(charmData);
-        const token = makeBuildString(charmData);
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function removeCharm(charm) {
@@ -1361,8 +1452,6 @@ export default function BuildForm({
         const tempStats = recalcBuild(itemNames, itemData);
         setStats(tempStats);
         update(tempStats);
-        const token = makeBuildString(null, entries);
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     function classChanged(newValue, actionMeta) {
@@ -1380,8 +1469,6 @@ export default function BuildForm({
         const tempStats = recalcBuild(itemNames, itemData);
         setStats(tempStats);
         update(tempStats);
-        const token = makeBuildString(null, null, newClass, [], { spec: null, specSkills: {}, enhancements: {} });
-        syncUrl(getStsBase() + '/builder/' + token);
     }
 
     const miscStats = [
@@ -1391,6 +1478,7 @@ export default function BuildForm({
         { type: 'knockbackRes', name: 'builder.stats.misc.kbResistance', percent: true },
         { type: 'thorns', name: 'builder.stats.misc.thorns', percent: false },
         { type: 'fireTickDamage', name: 'builder.stats.misc.fireTickDamage', percent: false },
+        { type: 'spellCooldownPercent', name: 'builder.stats.magic.spellCooldownPercent', percent: true },
     ];
     const healthStats = [
         { type: 'healthFinal', name: 'builder.stats.health.healthFinal', percent: false },
@@ -1465,15 +1553,11 @@ export default function BuildForm({
         // spell is only for wands, potion is only for alch bags
         { type: 'spellDamage', name: 'builder.stats.magic.spellDamage', percent: true },
         { type: 'potionDamage', name: 'builder.stats.magic.potionDamage', percent: false },
-        { type: 'spellCooldownPercent', name: 'builder.stats.magic.spellCooldownPercent', percent: true },
     ];
 
     React.useEffect(() => {
         if (updateLink) {
-            // awkward signal thing to update the link from the builderheader to get the name properly fixed up
-            // don't need to worry about updating the build string since it auto updates on dropdown change now
-            const token = makeBuildString();
-            syncUrl(getStsBase() + '/builder/' + token);
+            // The name edit no longer rewrites the URL; it just clears the flag.
             setUpdateLink(false);
         }
     }, [updateLink]);
@@ -1656,6 +1740,7 @@ export default function BuildForm({
                     setText={setBuildName}
                     parentLoaded={parentLoaded}
                     build={build}
+                    savedName={savedName}
                     setUpdateLink={setUpdateLink}
                 />
                 <div style={{ justifySelf: 'end', width: 'min(400px, 100%)' }}>
@@ -1956,11 +2041,6 @@ export default function BuildForm({
                     </button>
                 </div>
                 <div className="col-4 col-md-3 col-lg-2 text-center">
-                    <button type="button" className={styles.shareButton} id="share" onClick={copyBuild}>
-                        <TranslatableText identifier="builder.buttons.share"></TranslatableText>
-                    </button>
-                </div>
-                <div className="col-4 col-md-3 col-lg-2 text-center">
                     <button
                         type="button"
                         className={styles.shareButton}
@@ -1978,7 +2058,7 @@ export default function BuildForm({
                         onClick={saveBuildToServer}
                         disabled={saveState === 'saving'}
                     >
-                        {saveState === 'saving' ? 'Saving...' : saveState === 'copied' ? 'Copied!' : 'Copy short link'}
+                        {saveState === 'saving' ? 'Saving...' : saveState === 'copied' ? 'Copied!' : 'Copy/Save'}
                     </button>
                 </div>
                 <div className="col-4 col-md-3 col-lg-2 text-center">
@@ -1991,18 +2071,31 @@ export default function BuildForm({
                     />
                 </div>
             </div>
-            {saveState === 'copied' && (
-                <div className="row justify-content-center my-1">
-                    <div className="col-auto">
-                        <span className={styles.savedLink}>
-                            <b>Copied short link to clipboard!</b>
-                        </span>
-                    </div>
-                </div>
-            )}
-            {saveState === 'error' && (
-                <div className="row justify-content-center my-1">
-                    <div className={styles.importError}>Could not save the build.</div>
+            {(saveState === 'copied' || saveState === 'error' || savedAnonymous) && (
+                <div
+                    className={`${styles.copyToast}${
+                        saveState === 'error'
+                            ? ` ${styles.copyToastError}`
+                            : savedAnonymous
+                              ? ` ${styles.copyToastWarn}`
+                              : ''
+                    }`}
+                    role="status"
+                    aria-live="polite"
+                >
+                    {saveState === 'error' ? (
+                        'Could not save the build.'
+                    ) : savedAnonymous ? (
+                        <>
+                            <b>Saved, but not to your account!</b>
+                            <span>
+                                You won't see this build on your "My Builds" page. Log in with Discord to keep it there
+                                - the link still works for anyone.
+                            </span>
+                        </>
+                    ) : (
+                        <b>Copied short link to clipboard!</b>
+                    )}
                 </div>
             )}
             <div className="row justify-content-center mb-1">
@@ -2419,7 +2512,7 @@ export default function BuildForm({
                     identifier="builder.misc.situationals"
                     className="text-center mb-1"
                 ></TranslatableText>
-                {generateSituationalCheckboxes(itemsToDisplay, checkboxChanged)}
+                {generateSituationalCheckboxes(itemsToDisplay, checkboxChanged, delveInfusions)}
             </div>
             <div className="d-flex justify-content-center flex-wrap align-items-start mb-1">
                 <div className="text-center mx-2">
@@ -2546,6 +2639,60 @@ export default function BuildForm({
                     ></ListSelector>
                 </div>
             </div>
+
+            {/* Notes: a signed-in feature. Owner edits on their short link,
+                logged-in users can jot them on the builder (saved together
+                with the build), everyone sees them on shared links. */}
+            {(canEditNotes === true ||
+                (canEditNotes === undefined && loggedIn === true) ||
+                (canEditNotes === false && notes)) && (
+                <div className="row justify-content-center mt-3">
+                    <div className="col-12 col-lg-8 col-xl-6">
+                        {canEditNotes === false ? (
+                            <div className={styles.buildNotesBody}>{notes}</div>
+                        ) : (
+                            <>
+                                <textarea
+                                    className={styles.buildNotesInput}
+                                    value={notesDraft}
+                                    onChange={(e) => setNotesDraft(e.target.value)}
+                                    placeholder="Add notes about this build..."
+                                    rows={3}
+                                    maxLength={2000}
+                                />
+                                <div className={styles.buildNotesActions}>
+                                    {canEditNotes ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className={styles.shareButton}
+                                                onClick={saveNotes}
+                                                disabled={notesSaveState === 'saving'}
+                                            >
+                                                {notesSaveState === 'saving'
+                                                    ? 'Saving...'
+                                                    : notesSaveState === 'saved'
+                                                      ? 'Saved!'
+                                                      : 'Save notes'}
+                                            </button>
+                                            {notesSaveState === 'saved' && (
+                                                <span className={styles.buildNotesSaved}>Notes saved!</span>
+                                            )}
+                                            {notesSaveState === 'error' && (
+                                                <span className={styles.importError}>Could not save the notes.</span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className={styles.buildNotesHint}>
+                                            Notes are saved together with your build.
+                                        </span>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </form>
     );
 }

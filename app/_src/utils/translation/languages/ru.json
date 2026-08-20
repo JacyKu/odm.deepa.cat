@@ -235,5 +235,17 @@
     "builder.multipliers.health": "Множители Здоровья",
     "builder.multipliers.speed": "Множители Скорости",
     "items.searchForm.charmPower": "Сила чармов",
-    "items.searchForm.not": "Не"
+    "items.searchForm.not": "Не",
+    "auth.loginWithDiscord": "Войти через Discord",
+    "auth.myBuilds": "Мои сборки",
+    "builds.title": "Мои сборки",
+    "builds.loading": "Загрузка...",
+    "builds.loginRequired": "Войдите через Discord, чтобы просматривать и управлять сохранёнными сборками.",
+    "builds.empty": "Сохранённых сборок пока нет. Соберите что-нибудь и нажмите «Копировать короткую ссылку».",
+    "builds.rename": "Переименовать",
+    "builds.renameError": "Не удалось переименовать сборку.",
+    "builds.delete": "Удалить",
+    "builds.deleteError": "Не удалось удалить сборку.",
+    "builds.confirmDelete": "Подтвердить?",
+    "builds.notes": "Заметки"
 }

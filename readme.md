@@ -9,10 +9,22 @@ Please report issues or feature requests on [Github](https://github.com/JacyKu/s
 
 ---
 
-### Planned updates:
+## Discord login + build saving
 
-- Build share/save system.
-    > Public build database where players can share and save their builds, optionally having their own build saves.
+Required env vars on the server (never commit them):
+
+- `STS_SESSION_SECRET` — at least 32 chars; encrypts the `sts-session` cookie
+- `STS_DISCORD_CLIENT_ID` — Discord application client id
+- `STS_DISCORD_CLIENT_SECRET`
+- `STS_DB_PATH` — optional; defaults to `<cwd>/data/sts-builds.db`
+
+The Discord application's redirect URI must be registered as:
+`https://sts.deepa.cat/api/auth/discord/callback` (production) and
+`http://localhost:3001/api/auth/discord/callback` (local dev).
+
+---
+
+### Planned updates:
 
 - Build notes.
     > Implemented together with the share/save system.

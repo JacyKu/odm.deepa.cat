@@ -29,7 +29,8 @@ export default function BuilderHeader(data) {
     React.useEffect(() => {
         if (data.parentLoaded) {
             let tempName = 'Monumenta Builder';
-            const name = decodeBuildName(data.build);
+            // A DB-saved build can carry a display name from "My Builds" renaming.
+            const name = data.savedName || decodeBuildName(data.build);
             if (name) tempName = name;
             setText(decodeURIComponent(tempName));
             setTempText(decodeURIComponent(tempName));

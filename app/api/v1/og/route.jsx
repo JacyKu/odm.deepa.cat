@@ -5,6 +5,7 @@ import sharp from 'sharp';
 import { getItemData, getSkillsData } from '../../../_src/utils/itemsData';
 import { getLinkPreviewData, getEffectiveBuildName } from '../../../_src/utils/buildPreview';
 import { getMinecraftTextureKey } from '../../../_src/utils/items/minecraftFallback';
+import { getBuild } from '../../../../lib/sts-builds';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -259,12 +260,70 @@ function SkillPanel({ data }) {
     );
 }
 
+// Delve infusion chips (slot label + infusion name), rendered from DB state.
+function InfusionPanel({ infusions }) {
+    const entries = Object.entries(infusions || {}).filter(([, v]) => v && v !== 'None');
+    if (entries.length === 0) return null;
+    const SLOT_SHORT = {
+        mainhand: 'MH',
+        offhand: 'OH',
+        helmet: 'HELM',
+        chestplate: 'CHEST',
+        leggings: 'LEGS',
+        boots: 'BOOTS',
+    };
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: 10 }}>
+            <div style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700, marginBottom: 4 }}>
+                INFUSIONS
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {entries.map(([slot, name]) => (
+                    <div
+                        key={slot}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            border: `1px solid ${BORDER}`,
+                            background: PANEL,
+                            padding: '2px 7px',
+                            fontSize: 13,
+                            color: SKILL_ENH,
+                        }}
+                    >
+                        <span style={{ fontSize: 10, letterSpacing: 1, color: DIM, fontWeight: 700 }}>
+                            {SLOT_SHORT[slot] || slot.toUpperCase()}
+                        </span>
+                        <span style={{ fontWeight: 600 }}>{name}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const build = searchParams.get('build');
+    const buildId = searchParams.get('id');
+
+    // Saved builds can be rendered by DB id: the token alone can't carry the
+    // delve infusions, which live in the DB state.
+    let savedState = null;
+    const token = (() => {
+        if (build) return build;
+        if (buildId) {
+            const row = getBuild(buildId);
+            if (!row) return null;
+            savedState = row.parsedState;
+            return row.token;
+        }
+        return null;
+    })();
 
     const [itemData, skillsData] = await Promise.all([getItemData(), getSkillsData()]);
-    const data = build ? getLinkPreviewData(build, itemData, skillsData) : null;
+    const data = token ? getLinkPreviewData(token, itemData, skillsData) : null;
     const fontStyle = { fontFamily: 'sans-serif' };
 
     // No (or invalid) build: render a simple base-site card with the favicon.
@@ -297,11 +356,13 @@ export async function GET(request) {
     const title = getEffectiveBuildName(data, null) || 'Monumenta Builder';
     const className = data.className || null;
     const spec = data.spec || null;
+    const region = data.region;
     const totalSkillPoints = (data.skills || []).reduce((sum, s) => sum + (Number(s.points) || 0), 0);
     const totalSpecPoints = (data.specSkills || []).reduce((sum, s) => sum + (Number(s.points) || 0), 0);
     const hasCz = (data.czAbilities || []).length > 0;
     // Class skills don't exist inside Celestial Zenith / Darkest Depths.
     const hasBuildInfo = (className || spec || totalSkillPoints > 0 || totalSpecPoints > 0) && !hasCz;
+    const hasInfusions = Object.values((savedState && savedState.infusions) || {}).some((v) => v && v !== 'None');
 
     const InfoItem = ({ label, value }) => (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
@@ -352,6 +413,7 @@ export async function GET(request) {
 
             {hasBuildInfo && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {[1, 2, 3].includes(region) && <InfoItem label="REGION" value={`R${region}`} />}
                     {className && <InfoItem label="CLASS" value={className} />}
                     {spec && <InfoItem label="SPEC" value={spec} />}
                     {totalSkillPoints > 0 && <InfoItem label="SKILL POINTS" value={String(totalSkillPoints)} />}
@@ -366,6 +428,8 @@ export async function GET(request) {
             )}
 
             {!hasCz && <SkillPanel data={data} />}
+
+            <InfusionPanel infusions={savedState && savedState.infusions} />
 
             {hasCz && data.czAbilities.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 10 }}>

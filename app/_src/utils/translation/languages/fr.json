@@ -209,5 +209,17 @@
     "builder.multipliers.health": "Multiplicateurs de Vie",
     "builder.multipliers.speed": "Multiplicateurs de Vitesse",
     "items.searchForm.charmPower": "Puissance de charme",
-    "items.searchForm.not": "Négation"
+    "items.searchForm.not": "Négation",
+    "auth.loginWithDiscord": "Se connecter avec Discord",
+    "auth.myBuilds": "Mes builds",
+    "builds.title": "Mes builds",
+    "builds.loading": "Chargement...",
+    "builds.loginRequired": "Connectez-vous avec Discord pour voir et gérer vos builds sauvegardés.",
+    "builds.empty": "Aucun build sauvegardé. Créez un build puis cliquez sur « Copier le lien court ».",
+    "builds.rename": "Renommer",
+    "builds.renameError": "Impossible de renommer le build.",
+    "builds.delete": "Supprimer",
+    "builds.deleteError": "Impossible de supprimer le build.",
+    "builds.confirmDelete": "Confirmer ?",
+    "builds.notes": "Notes"
 }

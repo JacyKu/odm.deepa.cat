@@ -1,0 +1,131 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px;
+    color: var(--text-1);
+}
+
+.title {
+    margin: 0 0 20px;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.muted {
+    color: var(--text-2);
+    text-align: center;
+}
+
+.error {
+    color: var(--negative, #ce2d27);
+    text-align: center;
+}
+
+.loginPrompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+}
+
+.loginBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-1);
+    text-decoration: none;
+    font-weight: 500;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.loginBtn:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--glass-1);
+    border: 2px solid var(--glass-border);
+}
+
+.name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-1);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.name:hover {
+    text-decoration: underline;
+}
+
+.date {
+    color: var(--text-2);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.nameInput {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    background: var(--surface-1);
+    border: 2px solid var(--control-border);
+    color: var(--text-1);
+    font-size: 14px;
+}
+
+.nameInput:focus {
+    outline: none;
+    border-color: var(--control-border-hover);
+}
+
+.rowBtn {
+    padding: 6px 12px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-2);
+    color: var(--text-1);
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.rowBtn:hover {
+    border-color: var(--control-border-hover);
+    background: var(--surface-2);
+}
+
+@media (max-width: 560px) {
+    .date {
+        display: none;
+    }
+}

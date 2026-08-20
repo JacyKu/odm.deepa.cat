@@ -5,6 +5,24 @@ const { compressToEncodedURIComponent, decompressFromEncodedURIComponent } = LZS
 const LEGACY_COMPRESSED_PREFIX = 'z:';
 const BINARY_V1_PREFIX = 'v1_';
 
+// The build token generation this codec currently produces. Short links are
+// versioned against this (/b/v6/<id>) so older decoder versions can be kept
+// around and the link routing stays honest about what a token contains.
+export const CURRENT_TOKEN_VERSION = 6;
+
+// Reads the version byte out of a binary token (v1_<base64url>), or null for
+// legacy formats. Used to version short links and to validate that a token
+// matches the version its link claims.
+export function getBuildTokenVersion(token) {
+    if (typeof token !== 'string' || !token.startsWith(BINARY_V1_PREFIX)) return null;
+    try {
+        const bytes = fromBase64Url(token.slice(BINARY_V1_PREFIX.length));
+        return bytes.length > 0 ? bytes[0] : null;
+    } catch (e) {
+        return null;
+    }
+}
+
 function isLegacyBuildString(value) {
     // Current legacy format is a querystring-like payload containing keys like m=, o=, ...
     return typeof value === 'string' && value.includes('=') && value.includes('&');
@@ -232,7 +250,14 @@ export function decodeBuildParam(build, itemData) {
             const STAT_DEFAULTS = [100, 0, 0, 0, 0, 0, 3];
             if (version === 6) {
                 if (offset + 6 <= bytes.length) {
-                    const singleStats = [bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3], bytes[offset + 4], bytes[offset + 5]];
+                    const singleStats = [
+                        bytes[offset],
+                        bytes[offset + 1],
+                        bytes[offset + 2],
+                        bytes[offset + 3],
+                        bytes[offset + 4],
+                        bytes[offset + 5],
+                    ];
                     offset += 6;
                     const health = readVarint(bytes, offset);
                     offset = health.offset;
@@ -471,11 +496,13 @@ export function encodeBuildParamBinaryV2({
 
     // Extra stat inputs. Health is a varint in v6+ (no upper cap, minimum 1);
     // the remaining stats stay single bytes.
-    const statBytes = Uint8Array.from([0, 0, 0, 0, 0, 3].map((d, i) => {
-        const v = Number(statValues && statValues[i + 1]);
-        const n = Number.isFinite(v) ? v : d;
-        return Math.max(0, Math.min(255, Math.round(n)));
-    }));
+    const statBytes = Uint8Array.from(
+        [0, 0, 0, 0, 0, 3].map((d, i) => {
+            const v = Number(statValues && statValues[i + 1]);
+            const n = Number.isFinite(v) ? v : d;
+            return Math.max(0, Math.min(255, Math.round(n)));
+        })
+    );
     const healthRaw = Number(statValues && statValues[0]);
     const health = Number.isFinite(healthRaw) ? Math.max(1, Math.round(healthRaw)) : 100;
     const healthBytes = writeVarint(health);

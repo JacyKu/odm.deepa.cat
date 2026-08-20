@@ -55,7 +55,9 @@
     width: fit-content;
     height: 30px;
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease;
 }
 
 .checkboxWithLabel:hover {
@@ -1326,6 +1328,92 @@ div.charmTotals {
 
 .savedLink a {
     color: var(--text-1);
+}
+
+/* Per-build notes (visible to everyone, editable by the owner). */
+.buildNotesInput {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--surface-1);
+    border: 2px solid var(--control-border);
+    color: var(--text-1);
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.buildNotesInput:focus {
+    outline: none;
+    border-color: var(--control-border-hover);
+}
+
+.buildNotesBody {
+    color: var(--text-1);
+    font-size: 14px;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+.buildNotesActions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.buildNotesSaved {
+    color: #7ee787;
+    font-size: 13px;
+}
+
+.buildNotesHint {
+    color: var(--text-2);
+    font-size: 13px;
+}
+
+/* Transient copy/save notices: slide down from the top edge over the page. */
+.copyToast {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    z-index: 90;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    border: 2px solid var(--glass-border);
+    background: var(--surface-1);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    color: var(--text-1);
+    font-size: 14px;
+    white-space: nowrap;
+    animation: copyToastIn 0.35s ease forwards;
+}
+
+.copyToastError {
+    color: #e0526b;
+    border-color: #e0526b;
+}
+
+.copyToastWarn {
+    color: #ffd24a;
+    border-color: rgba(255, 210, 74, 0.5);
+}
+
+@keyframes copyToastIn {
+    from {
+        transform: translate(-50%, -100%);
+    }
+    to {
+        transform: translate(-50%, 14px);
+    }
+}
+
+@media (max-width: 560px) {
+    .copyToast {
+        white-space: normal;
+        text-align: center;
+        max-width: calc(100vw - 24px);
+    }
 }
 
 .modalOverlay {
