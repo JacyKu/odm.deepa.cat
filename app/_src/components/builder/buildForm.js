@@ -490,6 +490,8 @@ export default function BuildForm({
     const [delveOpen, setDelveOpen] = React.useState(false);
     const [delveInfusions, setDelveInfusions] = React.useState({}); // slot -> infusion name (always level IV)
     const [revelation, setRevelation] = React.useState(false);
+    const [charmSelectKey, setCharmSelectKey] = React.useState(0);
+    const [multiplierListKey, setMultiplierListKey] = React.useState(0);
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
@@ -1233,6 +1235,21 @@ export default function BuildForm({
         setStatInputs(DEFAULT_STAT_INPUTS);
         setRegionValue(3);
         setRegionSelectKey((k) => k + 1);
+        setCharms([]);
+        setCharmSelectKey((k) => k + 1);
+        setDelveInfusions({});
+        setRevelation(false);
+        setCzAbilities({});
+        setCzSelectedTree(CZ_MAIN_TREES[0]);
+        setBuildName('Monumenta Builder');
+        setActiveBuildId(null);
+        for (let box in enabledBoxes) {
+            enabledBoxes[box] = false;
+        }
+        for (let key in extraStats) {
+            extraStats[key] = [];
+        }
+        setMultiplierListKey((k) => k + 1);
         const tempStats = recalcBuild(emptyBuild, itemData);
         setStats(tempStats);
         update(tempStats);
@@ -2214,6 +2231,7 @@ export default function BuildForm({
                     <div className="row mb-1">
                         <div className="col-12">
                             <CharmSelector
+                                key={charmSelectKey}
                                 update={updateCharms}
                                 translatableName={'builder.charms.select'}
                                 itemData={itemData}
@@ -2611,30 +2629,35 @@ export default function BuildForm({
             <div className="row mb-1 justify-content-center">
                 <div className="col-12 col-md-6 col-lg-2">
                     <ListSelector
+                        key={`damage-${multiplierListKey}`}
                         update={damageMultipliersChanged}
                         translatableName="builder.multipliers.damage"
                     ></ListSelector>
                 </div>
                 <div className="col-12 col-md-6 col-lg-2">
                     <ListSelector
+                        key={`resistance-${multiplierListKey}`}
                         update={resistanceMultipliersChanged}
                         translatableName="builder.multipliers.resistance"
                     ></ListSelector>
                 </div>
                 <div className="col-12 col-md-6 col-lg-2">
                     <ListSelector
+                        key={`health-${multiplierListKey}`}
                         update={healthMultipliersChanged}
                         translatableName="builder.multipliers.health"
                     ></ListSelector>
                 </div>
                 <div className="col-12 col-md-6 col-lg-2">
                     <ListSelector
+                        key={`speed-${multiplierListKey}`}
                         update={speedMultipliersChanged}
                         translatableName="builder.multipliers.speed"
                     ></ListSelector>
                 </div>
                 <div className="col-12 col-md-6 col-lg-2">
                     <ListSelector
+                        key={`attackSpeed-${multiplierListKey}`}
                         update={attackSpeedMultipliersChanged}
                         translatableName="builder.multipliers.attackSpeed"
                     ></ListSelector>
