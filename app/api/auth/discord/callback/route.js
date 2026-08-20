@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { exchangeDiscordCode, getSession, discordRedirectUri } from '../../../../../lib/session';
+import { exchangeDiscordCode, getSession, discordRedirectUri, appUrl } from '../../../../../lib/session';
 
 export async function GET(request) {
     const url = new URL(request.url);
@@ -15,16 +15,16 @@ export async function GET(request) {
         try {
             const parsed = JSON.parse(stored.value);
             if (!state || parsed.state !== state) {
-                return NextResponse.redirect(new URL('/builder?login=failed', request.url));
+                return NextResponse.redirect(appUrl(request.url, '/builder?login=failed'));
             }
             nextPath = typeof parsed.next === 'string' ? parsed.next : '/builder';
         } catch (e) {
-            return NextResponse.redirect(new URL('/builder?login=failed', request.url));
+            return NextResponse.redirect(appUrl(request.url, '/builder?login=failed'));
         }
     }
 
     if (!code) {
-        return NextResponse.redirect(new URL('/builder?login=failed', request.url));
+        return NextResponse.redirect(appUrl(request.url, '/builder?login=failed'));
     }
 
     try {
@@ -33,9 +33,9 @@ export async function GET(request) {
         session.user = user;
         await session.save();
         cookieStore.delete('sts-oauth-state');
-        return NextResponse.redirect(new URL(nextPath, request.url));
+        return NextResponse.redirect(appUrl(request.url, nextPath));
     } catch (e) {
         console.error('Discord OAuth callback failed:', e);
-        return NextResponse.redirect(new URL('/builder?login=failed', request.url));
+        return NextResponse.redirect(appUrl(request.url, '/builder?login=failed'));
     }
 }
