@@ -458,6 +458,17 @@ class Stats {
             ).toFixed(2);
         }
 
+        // Effective HP regenerated per second: the raw (pre-mitigation) damage
+        // that your regeneration can out-heal each second, per damage type.
+        const regenPerSec = Number(this.regenPerSec) || 0;
+        this.meleeEHPR = (regenPerSec / (1 - drs.melee[drType].val)).toFixed(2);
+        this.projectileEHPR = (regenPerSec / (1 - drs.projectile[drType].val)).toFixed(2);
+        this.magicEHPR = (regenPerSec / (1 - drs.magic[drType].val)).toFixed(2);
+        this.blastEHPR = (regenPerSec / (1 - drs.blast[drType].val)).toFixed(2);
+        this.fireEHPR = (regenPerSec / (1 - drs.fire[drType].val)).toFixed(2);
+        this.fallEHPR = (regenPerSec / (1 - drs.fall[drType].val)).toFixed(2);
+        this.ailmentEHPR = (regenPerSec / (1 - drs.ailment[drType].val)).toFixed(2);
+
         // Health Normalized Damage Reductions
         this.meleeHNDR = new Percentage(1 - (1 - drs.melee[drType].val) / (this.healthFinal / 20), false).toFixedPerc(
             2
@@ -999,6 +1010,13 @@ class Stats {
             (this.fireEHP = 0),
             (this.fallEHP = 0),
             (this.ailmentEHP = 0),
+            (this.meleeEHPR = 0),
+            (this.projectileEHPR = 0),
+            (this.magicEHPR = 0),
+            (this.blastEHPR = 0),
+            (this.fireEHPR = 0),
+            (this.fallEHPR = 0),
+            (this.ailmentEHPR = 0),
             (this.hasMoreArmor = false),
             (this.hasMoreAgility = false),
             (this.hasEqualDefenses = false),

@@ -1534,6 +1534,16 @@ export default function BuildForm({
         { type: 'fallEHP', name: 'builder.stats.dr-ehp.fall', percent: false },
         { type: 'ailmentEHP', name: 'builder.stats.dr-ehp.ailment', percent: false },
     ];
+
+    const EHPRStats = [
+        { type: 'meleeEHPR', name: 'builder.stats.dr-ehp.melee', percent: false },
+        { type: 'projectileEHPR', name: 'builder.stats.dr-ehp.projectile', percent: false },
+        { type: 'magicEHPR', name: 'builder.stats.dr-ehp.magic', percent: false },
+        { type: 'blastEHPR', name: 'builder.stats.dr-ehp.blast', percent: false },
+        { type: 'fireEHPR', name: 'builder.stats.dr-ehp.fire', percent: false },
+        { type: 'fallEHPR', name: 'builder.stats.dr-ehp.fall', percent: false },
+        { type: 'ailmentEHPR', name: 'builder.stats.dr-ehp.ailment', percent: false },
+    ];
     const meleeStats = [
         { type: 'attackSpeedPercent', name: 'builder.stats.melee.attackSpeedPercent', percent: true },
         { type: 'attackSpeed', name: 'builder.stats.melee.attackSpeed', percent: false },
@@ -2436,6 +2446,36 @@ export default function BuildForm({
                                 </div>
                             );
                         }
+                        return temp;
+                    })()}
+                </div>
+                <div
+                    className={`${styles.builderStatCard} ${styles.builderStatCol} col-auto text-center mx-2 my-1 py-2`}
+                >
+                    <h5 className="text-center fw-bold mb-1">
+                        <TranslatableText identifier="builder.statCategories.effectiveHealthRegen"></TranslatableText>
+                    </h5>
+                    <h6 className="text-center fw-bold">&nbsp;</h6>
+                    {(() => {
+                        const unstableEHPRTypes = ['meleeEHPR', 'projectileEHPR', 'magicEHPR', 'blastEHPR'];
+                        let temp = EHPRStats.map((stat) => {
+                            let condition = itemsToDisplay.instability && unstableEHPRTypes.includes(stat.type);
+                            return itemsToDisplay[stat.type] !== undefined ? (
+                                <div key={stat.type}>
+                                    <p className={`${styles.statRow} mb-0 mt-1 ${condition ? styles.grayedout : ''}`}>
+                                        <b>
+                                            <TranslatableText identifier={stat.name}></TranslatableText>:{' '}
+                                        </b>
+                                        <span className={styles.monoValue}>
+                                            {itemsToDisplay[stat.type]}
+                                            {stat.percent ? '%' : ''}
+                                        </span>
+                                    </p>
+                                </div>
+                            ) : (
+                                ''
+                            );
+                        });
                         return temp;
                     })()}
                 </div>
