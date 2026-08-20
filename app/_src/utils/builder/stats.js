@@ -797,13 +797,20 @@ class Stats {
         if (this.hasDelveInfusion('Nutriment'))
             this.healingRate.mul(1 + DELVE_HEALING_PER_LEVEL * this.delveLevel, false);
         // Warrior Toughness: +10%/+20% max health, +5% more when enhanced.
+        // It is a separate multiplicative source (like class damage), not part of the additive gear hp% pool.
+        let toughnessMultiplier = 1;
         if (this.enabledClassAbilityBuffs.toughness_lv1) {
-            this.healthPercent.add(this.enabledClassAbilityBuffs.toughness_lv2 ? 20 : 10);
-            if (this.enabledClassAbilityBuffs.toughness_enhancement) this.healthPercent.add(5);
+            let toughnessBonus = this.enabledClassAbilityBuffs.toughness_lv2 ? 20 : 10;
+            if (this.enabledClassAbilityBuffs.toughness_enhancement) toughnessBonus += 5;
+            toughnessMultiplier = 1 + toughnessBonus / 100;
         }
         // Calculate final health
         this.healthFinal =
-            this.healthFlat * this.healthPercent.val * (1 + 0.01 * Number(this.vitality)) * this.extraHealthMultiplier;
+            this.healthFlat *
+            this.healthPercent.val *
+            (1 + 0.01 * Number(this.vitality)) *
+            toughnessMultiplier *
+            this.extraHealthMultiplier;
         // Current health (percentage of max health based on player input)
         this.currentHealth = this.healthFinal * this.currentHealthPercent.val;
         // Fix speed percentage to account for base speed
