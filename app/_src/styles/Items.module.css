@@ -983,6 +983,23 @@
     border-color: var(--control-border-hover);
 }
 
+.dragHandle {
+    cursor: grab;
+    user-select: none;
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+.dragHandle:active {
+    cursor: grabbing;
+}
+
+.skillDragging {
+    opacity: 0.35;
+}
+
 .skillName {
     font-weight: bold;
     font-size: 14px;

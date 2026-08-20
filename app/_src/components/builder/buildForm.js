@@ -65,6 +65,53 @@ const emptyBuild = {
 // the plain /builder page, or on /b/<id> when the draft belongs to that build.
 const DRAFT_KEY = 'sts.buildDraft.v1';
 
+// Reorderable skill/ability lists: the custom order (a personal layout
+// preference) is stored in localStorage per class / specialization / tree.
+const ORDER_PREFIX = 'sts.order.';
+
+function readOrder(container) {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = window.localStorage.getItem(ORDER_PREFIX + container);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function writeOrder(container, orderedKeys) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.setItem(ORDER_PREFIX + container, JSON.stringify(orderedKeys));
+    } catch (e) {}
+}
+
+// Sort items by the stored order; items without an entry keep their relative
+// order after the ones that do.
+function applyStoredOrder(items, keyOf, container) {
+    const order = readOrder(container);
+    if (!order || order.length === 0) return items;
+    const idx = new Map(order.map((k, i) => [k, i]));
+    return [...items].sort((a, b) => {
+        const ia = idx.has(keyOf(a)) ? idx.get(keyOf(a)) : Number.MAX_SAFE_INTEGER;
+        const ib = idx.has(keyOf(b)) ? idx.get(keyOf(b)) : Number.MAX_SAFE_INTEGER;
+        if (ia !== ib) return ia - ib;
+        return items.indexOf(a) - items.indexOf(b);
+    });
+}
+
+// Move `fromKey` to `toKey`'s slot in the given (already-sorted) list.
+function moveInOrder(list, keyOf, fromKey, toKey) {
+    const next = [...list];
+    const from = next.findIndex((it) => keyOf(it) === fromKey);
+    if (from === -1) return next;
+    const [moved] = next.splice(from, 1);
+    const to = next.findIndex((it) => keyOf(it) === toKey);
+    if (to === -1) next.push(moved);
+    else next.splice(to, 0, moved);
+    return next;
+}
+
 const enabledBoxes = {
     // Situational Defense
     shielding: false,
@@ -507,6 +554,34 @@ export default function BuildForm({
             if (raw) setDraft(JSON.parse(raw));
         } catch (e) {}
     }, []);
+
+    // Drag-to-reorder of skill/ability lists. dragState drives styling; the
+    // ref holds the in-flight drag so handlers never read stale state.
+    const [dragState, setDragState] = React.useState(null); // { container, key }
+    const dragStateRef = React.useRef(null);
+    const [orderVersion, setOrderVersion] = React.useState(0);
+
+    function startSkillDrag(container, key, e) {
+        if (e.dataTransfer) e.dataTransfer.setData('text/plain', `${container}:${key}`);
+        dragStateRef.current = { container, key };
+        setDragState({ container, key });
+    }
+
+    function endSkillDrag() {
+        dragStateRef.current = null;
+        setDragState(null);
+    }
+
+    // On drag-over a row in the same container, move the dragged item to that
+    // row's slot and persist the new order (triggers a re-render via orderVersion).
+    function skillDragOver(e, container, key, sortedList, keyOf) {
+        const d = dragStateRef.current;
+        if (!d || d.container !== container || d.key === key) return;
+        e.preventDefault();
+        const next = moveInOrder(sortedList, keyOf, d.key, key);
+        writeOrder(container, next.map(keyOf));
+        setOrderVersion((v) => v + 1);
+    }
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
@@ -1688,6 +1763,23 @@ export default function BuildForm({
         : [];
     const czActiveTree = czTrees.find((t) => t.tree === czSelectedTree) || czTrees[0] || null;
 
+    // Reorderable lists (drag-to-arrange), with the user's custom order from
+    // localStorage applied per class / specialization / tree.
+    const classOrderContainer = gameClass != 'none' ? `class.${gameClass}` : null;
+    const classSkillList = classOrderContainer
+        ? applyStoredOrder(currentClassSkills, (s) => s.scoreboardId, classOrderContainer)
+        : currentClassSkills;
+    const specOrderContainer = gameClass != 'none' && spec ? `spec.${gameClass}.${spec}` : null;
+    const specSkillList = specOrderContainer
+        ? applyStoredOrder(currentSpecSkills, (s) => s.scoreboardId, specOrderContainer)
+        : currentSpecSkills;
+    const czOrderContainer = czActiveTree ? `cz.${regionValue}.${czActiveTree.tree}` : null;
+    const czSkillList = czOrderContainer
+        ? applyStoredOrder(czActiveTree.skills, (a) => a.name, czOrderContainer)
+        : czActiveTree
+          ? czActiveTree.skills
+          : [];
+
     // Totals of every stat across all equipped charms (effect summary).
     const charmTotals = computeCharmTotals(
         itemData,
@@ -1900,15 +1992,48 @@ export default function BuildForm({
                                 <div className={styles.skillsLoading}>Loading skills...</div>
                             ) : (
                                 <div className={styles.skillsGrid}>
-                                    {currentClassSkills.map((skill) => {
+                                    {classSkillList.map((skill) => {
                                         const maxPoints = Math.max(0, (skill.descriptions || []).length - 1);
                                         if (maxPoints === 0) return '';
                                         const points = skillPoints[skill.scoreboardId] || 0;
                                         const enhanced = Boolean(enhancements[skill.scoreboardId]);
                                         const enhanceDisabled = points < 1;
                                         const tooltip = [skill.simpleDescription].filter(Boolean).join('\n\n');
+                                        const dragging =
+                                            dragState &&
+                                            dragState.container === classOrderContainer &&
+                                            dragState.key === skill.scoreboardId;
                                         return (
-                                            <div key={skill.scoreboardId} className={styles.skillRow} title={tooltip}>
+                                            <div
+                                                key={skill.scoreboardId}
+                                                className={`${styles.skillRow} ${dragging ? styles.skillDragging : ''}`}
+                                                title={tooltip}
+                                                onDragOver={(e) =>
+                                                    classOrderContainer &&
+                                                    skillDragOver(
+                                                        e,
+                                                        classOrderContainer,
+                                                        skill.scoreboardId,
+                                                        classSkillList,
+                                                        (s) => s.scoreboardId
+                                                    )
+                                                }
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    endSkillDrag();
+                                                }}
+                                            >
+                                                <span
+                                                    className={styles.dragHandle}
+                                                    draggable
+                                                    onDragStart={(e) =>
+                                                        startSkillDrag(classOrderContainer, skill.scoreboardId, e)
+                                                    }
+                                                    onDragEnd={endSkillDrag}
+                                                    title="Drag to reorder"
+                                                >
+                                                    ⠿
+                                                </span>
                                                 <span className={styles.skillName}>{skill.displayName}</span>
                                                 <span className={styles.skillPoints}>
                                                     {points}/{maxPoints}
@@ -1979,13 +2104,46 @@ export default function BuildForm({
                                 )}
                             </div>
                             <div className={styles.skillsGrid}>
-                                {currentSpecSkills.map((skill) => {
+                                {specSkillList.map((skill) => {
                                     const maxPoints = Math.max(0, (skill.descriptions || []).length);
                                     if (maxPoints === 0) return '';
                                     const points = specSkillPoints[skill.scoreboardId] || 0;
                                     const tooltip = [skill.simpleDescription].filter(Boolean).join('\n\n');
+                                    const dragging =
+                                        dragState &&
+                                        dragState.container === specOrderContainer &&
+                                        dragState.key === skill.scoreboardId;
                                     return (
-                                        <div key={skill.scoreboardId} className={styles.skillRow} title={tooltip}>
+                                        <div
+                                            key={skill.scoreboardId}
+                                            className={`${styles.skillRow} ${dragging ? styles.skillDragging : ''}`}
+                                            title={tooltip}
+                                            onDragOver={(e) =>
+                                                specOrderContainer &&
+                                                skillDragOver(
+                                                    e,
+                                                    specOrderContainer,
+                                                    skill.scoreboardId,
+                                                    specSkillList,
+                                                    (s) => s.scoreboardId
+                                                )
+                                            }
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                endSkillDrag();
+                                            }}
+                                        >
+                                            <span
+                                                className={styles.dragHandle}
+                                                draggable
+                                                onDragStart={(e) =>
+                                                    startSkillDrag(specOrderContainer, skill.scoreboardId, e)
+                                                }
+                                                onDragEnd={endSkillDrag}
+                                                title="Drag to reorder"
+                                            >
+                                                ⠿
+                                            </span>
                                             <span className={styles.skillName}>{skill.displayName}</span>
                                             <span className={styles.skillPoints}>
                                                 {points}/{maxPoints}
@@ -2050,7 +2208,7 @@ export default function BuildForm({
                             ) : (
                                 czActiveTree && (
                                     <div className={styles.czTreeSkills}>
-                                        {czActiveTree.skills.map((ability) => {
+                                        {czSkillList.map((ability) => {
                                             const selected = czAbilities[ability.name] !== undefined;
                                             const rarity = czAbilities[ability.name] ?? 0;
                                             const desc =
@@ -2081,14 +2239,43 @@ export default function BuildForm({
                                             ]
                                                 .filter(Boolean)
                                                 .join('\n\n');
+                                            const dragging =
+                                                dragState &&
+                                                dragState.container === czOrderContainer &&
+                                                dragState.key === ability.name;
                                             return (
                                                 <div
                                                     key={ability.name}
                                                     className={`${styles.czSkillRow}${
                                                         triggerTaken && !selected ? ` ${styles.czDisabled}` : ''
-                                                    }`}
+                                                    }${dragging ? ` ${styles.skillDragging}` : ''}`}
                                                     title={tooltip}
+                                                    onDragOver={(e) =>
+                                                        czOrderContainer &&
+                                                        skillDragOver(
+                                                            e,
+                                                            czOrderContainer,
+                                                            ability.name,
+                                                            czSkillList,
+                                                            (a) => a.name
+                                                        )
+                                                    }
+                                                    onDrop={(e) => {
+                                                        e.preventDefault();
+                                                        endSkillDrag();
+                                                    }}
                                                 >
+                                                    <span
+                                                        className={styles.dragHandle}
+                                                        draggable
+                                                        onDragStart={(e) =>
+                                                            startSkillDrag(czOrderContainer, ability.name, e)
+                                                        }
+                                                        onDragEnd={endSkillDrag}
+                                                        title="Drag to reorder"
+                                                    >
+                                                        ⠿
+                                                    </span>
                                                     <input
                                                         type="checkbox"
                                                         checked={selected}
