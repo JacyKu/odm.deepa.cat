@@ -381,6 +381,7 @@ export default function ItemsPage({ itemData }) {
                                         key={`${name[0].name}-${name[0].masterwork}`}
                                         name={name[0].name}
                                         item={name}
+                                        itemData={itemData}
                                     ></MasterworkableItemTile>
                                 );
                             }

@@ -2199,6 +2199,7 @@ export default function BuildForm({
                                     update={receiveMasterworkUpdate}
                                     name={removeMasterworkFromName(tileName)}
                                     item={createMasterworkData(removeMasterworkFromName(tileName), itemData)}
+                                    itemData={itemData}
                                     default={Number(tileName.split('-').at(-1))}
                                 ></MasterworkableItemTile>
                             ) : (

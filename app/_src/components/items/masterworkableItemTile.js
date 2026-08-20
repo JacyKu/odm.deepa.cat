@@ -38,12 +38,24 @@ function getLowestMasterworkItem(items) {
     return min;
 }
 
-function getItemWithMasterwork(items, masterwork) {
+function getItemWithMasterwork(items, masterwork, itemData, name) {
     let minMasterwork = getLowestMasterworkItem(items).masterwork;
     if (masterwork >= minMasterwork) {
         for (let item of items) {
             if (Number(item.masterwork) === masterwork) {
                 return item;
+            }
+        }
+        // Search filters can prune a masterwork group to just the variants
+        // that matched (e.g. tier = Rare drops the Artifact masterwork-4
+        // variant). Before declaring the item undiscovered, resolve against
+        // the full dataset so clicking a higher star still works.
+        if (itemData && name) {
+            for (const key of Object.keys(itemData)) {
+                const item = itemData[key];
+                if (item.name === name && Number(item.masterwork) === masterwork) {
+                    return item;
+                }
             }
         }
     }
@@ -129,7 +141,7 @@ export default function MasterworkableItemTile(data) {
 
     let defaultItem;
     if (data.default) {
-        defaultItem = getItemWithMasterwork(item, data.default);
+        defaultItem = getItemWithMasterwork(item, data.default, data.itemData, data.name);
     } else {
         defaultItem = getLowestMasterworkItem(item);
     }
@@ -140,7 +152,7 @@ export default function MasterworkableItemTile(data) {
 
     function spanClicked(event) {
         let masterworkClicked = Number(event.target.id.split('-')[1]);
-        const tempActiveItem = getItemWithMasterwork(item, masterworkClicked);
+        const tempActiveItem = getItemWithMasterwork(item, masterworkClicked, data.itemData, data.name);
         setActiveItem(tempActiveItem);
         if (data.update) {
             data.update(tempActiveItem, tempActiveItem.type);
@@ -306,8 +318,7 @@ export default function MasterworkableItemTile(data) {
             {activeItem.undiscovered ? (
                 activeItem.undiscovered == undiscovered.UNDISCOVERED ? (
                     <span className={styles['undiscovered']}>
-                        This item has not yet been discovered! Tag FlamingoBike#6228 on discord with a screenshot of the
-                        item.
+                        This item has not yet been discovered! Tag jkitter on discord with a screenshot of the item.
                     </span>
                 ) : activeItem.undiscovered == undiscovered.DOES_NOT_EXIST ? (
                     <span className={styles['undiscovered']}>
