@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { exchangeDiscordCode, getSession } from '../../../../../lib/session';
+import { exchangeDiscordCode, getSession, discordRedirectUri } from '../../../../../lib/session';
 
 export async function GET(request) {
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');
-    const redirectUri = new URL('/api/auth/discord/callback', request.url).toString();
+    const redirectUri = discordRedirectUri(request.url);
 
     const cookieStore = await cookies();
     const stored = cookieStore.get('sts-oauth-state');

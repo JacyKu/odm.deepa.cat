@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
-import { discordLoginUrl } from '../../../../../lib/session';
+import { discordLoginUrl, discordRedirectUri } from '../../../../../lib/session';
 
 export async function GET(request) {
     const nextPath = new URL(request.url).searchParams.get('next') || '/builder';
@@ -15,7 +15,6 @@ export async function GET(request) {
         path: '/',
     });
 
-    const redirectUri = new URL('/api/auth/discord/callback', request.url).toString();
-    const url = discordLoginUrl(state, redirectUri);
+    const url = discordLoginUrl(state, discordRedirectUri(request.url));
     return NextResponse.redirect(url);
 }
