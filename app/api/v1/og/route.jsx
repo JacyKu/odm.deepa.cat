@@ -143,7 +143,7 @@ function MasterworkStars({ tier, masterwork }) {
     return <Stars filled={masterwork} max={max} />;
 }
 
-function EquipmentGrid({ itemLines }) {
+function EquipmentGrid({ itemLines, size = 56 }) {
     const CELL_W = 340;
     const rows = [];
     for (let i = 0; i < itemLines.length; i += 2) {
@@ -156,9 +156,14 @@ function EquipmentGrid({ itemLines }) {
                     {pair.map(({ label, name, img, ex, tier, masterwork }) => (
                         <div key={label} style={{ display: 'flex', width: CELL_W, marginRight: 10 }}>
                             {img ? (
-                                <img src={img} width={56} height={56} style={{ imageRendering: 'pixelated' }} />
+                                <img
+                                    src={img}
+                                    width={size}
+                                    height={size}
+                                    style={{ imageRendering: 'pixelated' }}
+                                />
                             ) : (
-                                <div style={{ width: 56, height: 56, border: `1px solid ${BORDER}` }} />
+                                <div style={{ width: size, height: size, border: `1px solid ${BORDER}` }} />
                             )}
                             <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 10 }}>
                                 <div style={{ fontSize: 11, letterSpacing: 1.5, color: DIM, fontWeight: 700 }}>
@@ -394,6 +399,19 @@ export async function GET(request) {
           )
         : null;
     const charmNames = data?.charms.items || [];
+    const hasCharms = charmNames.length > 0;
+    const hasAnyItem = (itemLines || []).some((l) => l.name);
+    const hasAnyExtra =
+        hasBuildInfo ||
+        data.ascension > 0 ||
+        hasCz ||
+        (data.skills || []).length > 0 ||
+        (data.specSkills || []).length > 0 ||
+        hasInfusions;
+    // Scale the item textures up when the card would otherwise have empty
+    // space: no charms panel -> 72px, and when nothing else is on the card
+    // (no skills/infusions/cz/info) -> 96px.
+    const textureSize = !hasCharms && hasAnyItem ? (hasAnyExtra ? 72 : 96) : 56;
 
     return new ImageResponse(
         <div
@@ -478,7 +496,7 @@ export async function GET(request) {
                     }}
                 >
                     <div style={{ fontSize: 13, letterSpacing: 2, color: DIM, fontWeight: 700 }}>EQUIPMENT</div>
-                    <EquipmentGrid itemLines={itemLines} />
+                    <EquipmentGrid itemLines={itemLines} size={textureSize} />
                 </div>
 
                 {charmNames.length > 0 && (
