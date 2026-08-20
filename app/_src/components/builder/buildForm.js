@@ -60,6 +60,11 @@ const emptyBuild = {
     boots: 'None',
 };
 
+// Session autosave: the current build draft is kept in localStorage so an
+// accidental reload / navigation away doesn't lose unsaved work. Restored on
+// the plain /builder page, or on /b/<id> when the draft belongs to that build.
+const DRAFT_KEY = 'sts.buildDraft.v1';
+
 const enabledBoxes = {
     // Situational Defense
     shielding: false,
@@ -492,6 +497,16 @@ export default function BuildForm({
     const [revelation, setRevelation] = React.useState(false);
     const [charmSelectKey, setCharmSelectKey] = React.useState(0);
     const [multiplierListKey, setMultiplierListKey] = React.useState(0);
+    const [draft, setDraft] = React.useState(null); // restored session draft, if any
+
+    // Read the session draft once on mount (localStorage is not available
+    // during SSR, and reading it in a render would break hydration).
+    React.useEffect(() => {
+        try {
+            const raw = window.localStorage.getItem(DRAFT_KEY);
+            if (raw) setDraft(JSON.parse(raw));
+        } catch (e) {}
+    }, []);
 
     function statInputChanged(name, event) {
         const next = { ...statInputs, [name]: event.target.value };
@@ -830,6 +845,10 @@ export default function BuildForm({
                 const link = window.location.origin + getStsBase() + d.url;
                 // Remember the row so later edits update it instead of forking.
                 setActiveBuildId(d.id);
+                // Move the address bar onto the build itself: a reload (or
+                // sharing the tab) keeps you on the saved build. replaceState,
+                // not pushState, so Back doesn't return to the blank builder.
+                window.history.replaceState(null, '', getStsBase() + d.url);
                 setSaveState('copied');
                 if (d.savedToAccount) {
                     setSavedAnonymous(false);
@@ -949,9 +968,17 @@ export default function BuildForm({
     }
 
     React.useEffect(() => {
-        if (parentLoaded && build) {
-            const decoded = decodeBuildParam(build, itemData);
-            if (!decoded) return;
+        if (!parentLoaded) return;
+        // Source of truth for this page: the URL build (saved build), or the
+        // session draft when there is none — unless the draft belongs to a
+        // different saved build. A matching draft wins over the DB row: it may
+        // hold edits the user hasn't saved yet.
+        const isLoadedBuild = Boolean(build);
+        const effDraft = draft && (!isLoadedBuild || draft.buildId === buildId) ? draft : null;
+        const loadToken = effDraft ? effDraft.token : build;
+        if (!loadToken) return;
+        const decoded = decodeBuildParam(loadToken, itemData);
+        if (!decoded) return;
             let buildParts = decodeURI(decoded).split('&');
             let itemNames = {
                 mainhand: buildParts.find((str) => str.includes('m='))?.split('m=')[1],
@@ -965,6 +992,15 @@ export default function BuildForm({
                 if (itemNames[type] === undefined || !Object.keys(itemData).includes(itemNames[type])) {
                     itemNames[type] = 'None';
                 }
+            });
+            // Drive the (uncontrolled) item selects explicitly: the build prop
+            // is present from the first render, but a restored draft arrives
+            // after mount, so defaultValue alone can't show the items.
+            Object.keys(itemNames).forEach((type) => {
+                itemRefs[type].current.setValue({
+                    value: itemNames[type],
+                    label: removeMasterworkFromName(itemNames[type]),
+                });
             });
             let charmString = buildParts.find((str) => str.includes('charm='));
             if (charmString) {
@@ -1113,10 +1149,12 @@ export default function BuildForm({
 
             // Saved builds carry the delve infusions + Revelation checkbox in
             // the DB (they are not part of the URL token); restore them here.
+            // Drafts carry them inline the same way.
+            const effSavedState = isLoadedBuild ? savedState : effDraft;
             const loadedDelve = {};
-            if (savedState && savedState.infusions && typeof savedState.infusions === 'object') {
+            if (effSavedState && effSavedState.infusions && typeof effSavedState.infusions === 'object') {
                 const loadedRegion = Number(statValues.region) || 3;
-                for (const [slot, infusion] of Object.entries(savedState.infusions)) {
+                for (const [slot, infusion] of Object.entries(effSavedState.infusions)) {
                     const ok = DELVE_INFUSIONS.some((i) => i.name === infusion && i.region <= loadedRegion);
                     if (ok) loadedDelve[slot] = infusion;
                 }
@@ -1125,13 +1163,22 @@ export default function BuildForm({
                     setDelveOpen(true);
                 }
             }
-            const loadedRevelation = Boolean(savedState && savedState.revelation);
+            const loadedRevelation = Boolean(effSavedState && effSavedState.revelation);
             if (loadedRevelation) setRevelation(true);
 
             // A build renamed on the "My Builds" page stores its display name in
             // the DB; surface it in the header so re-saving keeps the new name.
-            if (savedName) {
+            if (effDraft && effDraft.name) {
+                setBuildName(effDraft.name);
+            } else if (isLoadedBuild && savedName) {
                 setBuildName(savedName);
+            }
+
+            // Drafts also restore the notes text and remember the row they
+            // belong to, so saves keep updating that same build.
+            if (effDraft) {
+                if (effDraft.notes != null) setNotesDraft(effDraft.notes);
+                if (effDraft.buildId) setActiveBuildId(effDraft.buildId);
             }
 
             const delveEntries = {};
@@ -1177,8 +1224,48 @@ export default function BuildForm({
                     setCzAbilities(cleaned);
                 }
             }
-        }
-    }, [parentLoaded]);
+    }, [parentLoaded, draft]);
+
+    // Autosave the working state as a session draft (debounced) so an
+    // accidental reload or a switch to another page doesn't lose it. The load
+    // effect restores it on /builder, or on /b/<id> when it belongs to that
+    // build (unsaved edits to an opened build survive a reload too).
+    React.useEffect(() => {
+        if (!parentLoaded) return;
+        const timer = setTimeout(() => {
+            try {
+                window.localStorage.setItem(
+                    DRAFT_KEY,
+                    JSON.stringify({
+                        token: makeBuildString(),
+                        infusions: delveInfusions,
+                        revelation,
+                        name: buildName !== 'Monumenta Builder' ? buildName : null,
+                        notes: notesDraft.trim() ? notesDraft : null,
+                        buildId: activeBuildId || null,
+                        savedAt: Date.now(),
+                    })
+                );
+            } catch (e) {}
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [
+        parentLoaded,
+        stats,
+        charms,
+        gameClass,
+        skillPoints,
+        spec,
+        specSkillPoints,
+        enhancements,
+        statInputs,
+        regionValue,
+        delveInfusions,
+        revelation,
+        notesDraft,
+        buildName,
+        activeBuildId,
+    ]);
 
     // Once the skills data is known (it loads async, after parentLoaded), drop
     // points for skills that no longer exist in the API. Only removes unknown
