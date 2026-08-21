@@ -43,7 +43,9 @@ export function resolveCharmKey(itemData, nameOrKey) {
     );
 }
 
-// Effect summary: totals of every stat across all equipped charms.
+// Effect summary: totals of every stat across all equipped charms. A stat
+// locked by any charm (🔒) is exclusive: only the locked charm's value counts,
+// other charms' contributions to that stat are ignored.
 export function computeCharmTotals(itemData, charmNames) {
     const totals = {};
     for (const name of charmNames || []) {
@@ -52,7 +54,13 @@ export function computeCharmTotals(itemData, charmNames) {
         if (!stats) continue;
         for (const [stat, obj] of Object.entries(stats)) {
             if (!obj || typeof obj.value !== 'number') continue;
-            totals[stat] = { value: (totals[stat]?.value || 0) + obj.value };
+            if (obj.locked) {
+                totals[stat] = { value: obj.value, locked: true };
+            } else if (totals[stat]?.locked) {
+                continue;
+            } else {
+                totals[stat] = { value: (totals[stat]?.value || 0) + obj.value };
+            }
         }
     }
     return Object.fromEntries(Object.entries(totals).filter(([, obj]) => obj.value !== 0));
@@ -60,6 +68,8 @@ export function computeCharmTotals(itemData, charmNames) {
 
 export default function CharmSelector({ update, translatableName, itemData, hideList, charmNames }) {
     const inputRef = React.useRef();
+    const [warn, setWarn] = React.useState(null);
+    const warnTimeoutRef = React.useRef();
 
     const maxPower = 12;
     const entries = charmNames || [];
@@ -76,7 +86,14 @@ export default function CharmSelector({ update, translatableName, itemData, hide
         return Boolean(ability && ability.includes(query));
     };
 
+    function showWarn(message) {
+        setWarn(message);
+        if (warnTimeoutRef.current) clearTimeout(warnTimeoutRef.current);
+        warnTimeoutRef.current = setTimeout(() => setWarn(null), 5000);
+    }
+
     function processUpdate(updatedEntries) {
+        setWarn(null);
         update(updatedEntries);
     }
 
@@ -85,14 +102,36 @@ export default function CharmSelector({ update, translatableName, itemData, hide
 
         let actualName = Object.keys(itemData).find((name) => name.toLowerCase() == input.toLowerCase());
 
-        if (
-            actualName &&
-            itemData[actualName].type == 'Charm' &&
-            !entries.find((name) => (itemData[name] || resolveCharmKey(itemData, name)) == actualName) &&
-            usedPower + (itemData[actualName].power || 0) <= maxPower
-        ) {
-            processUpdate([...entries, actualName]);
+        if (!actualName || itemData[actualName].type != 'Charm') return;
+        if (entries.some((name) => resolveCharmKey(itemData, name) === actualName)) return;
+        if (usedPower + (itemData[actualName].power || 0) > maxPower) return;
+
+        // Locked charm stats (🔒) are exclusive: a charm that locks a stat
+        // can't be combined with any other charm that carries that stat, in
+        // either direction. Block the add and explain why.
+        const newStats = itemData[actualName].stats || {};
+        const equipped = new Map(); // stat -> { name, locked }
+        entries.forEach((name) => {
+            const key = resolveCharmKey(itemData, name);
+            const stats = key ? itemData[key]?.stats : null;
+            if (!stats) return;
+            for (const [stat, obj] of Object.entries(stats)) {
+                if (obj && typeof obj.value === 'number') equipped.set(stat, { name: itemData[key].name, locked: Boolean(obj.locked) });
+            }
+        });
+        for (const [stat, obj] of Object.entries(newStats)) {
+            if (!obj || typeof obj.value !== 'number') continue;
+            const other = equipped.get(stat);
+            if (!other) continue;
+            if (other.locked || obj.locked) {
+                showWarn(
+                    `"${itemData[actualName].name}" could not be added: it conflicts with the locked charm stat from "${other.name}" (${stat.replace(/_/g, ' ')}).`
+                );
+                return;
+            }
         }
+
+        processUpdate([...entries, actualName]);
     }
 
     return (
@@ -119,6 +158,11 @@ export default function CharmSelector({ update, translatableName, itemData, hide
                 <span className={styles.activeStars}>{'★'.repeat(usedPower)}</span>
                 <span>{`${'☆'.repeat(maxPower - usedPower)}]`}</span>
             </div>
+            {warn && (
+                <div className={`${styles.charmLockedWarn} mt-1`} role="alert">
+                    {warn}
+                </div>
+            )}
             {!hideList && (
                 <div className={styles.listSelectorList}>
                     {entries.map((entry, index) => {

@@ -69,3 +69,12 @@
 .activeStars {
     color: #fcb23d;
 }
+
+.charmLockedWarn {
+    color: #ff6b6b;
+    font-size: 13px;
+    text-align: center;
+    border: 2px solid rgba(255, 107, 107, 0.35);
+    background: rgba(255, 107, 107, 0.08);
+    padding: 6px 10px;
+}

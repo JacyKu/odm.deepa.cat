@@ -1,6 +1,7 @@
 import React from 'react';
 import styles from '../../styles/BuilderHeader.module.css';
 import { decodeBuildName } from '../../utils/builder/buildUrlCodec';
+import { filterBadWords } from '../../utils/badWords';
 
 function EditIcon({ className, onClick }) {
     return (
@@ -72,7 +73,9 @@ export default function BuilderHeader(data) {
     }
 
     function textchanged(e) {
-        setTempText(e.target.value);
+        const { cleaned, found } = filterBadWords(e.target.value);
+        if (found && data.onFiltered) data.onFiltered();
+        setTempText(cleaned);
     }
 
     function getPlaceholderBuildName() {

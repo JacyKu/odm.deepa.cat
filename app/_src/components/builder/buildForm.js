@@ -17,6 +17,7 @@ import ListSelector from './listSelector';
 import CharmSelector, { resolveCharmKey, computeCharmTotals } from './charmSelector';
 import CharmFormatter from '../../utils/items/charmFormatter';
 import CharmShortener from '../../utils/builder/charmShortener';
+import { filterBadWords } from '../../utils/badWords';
 import {
     decodeBuildParam,
     encodeBuildParam,
@@ -544,6 +545,22 @@ export default function BuildForm({
     const [revelation, setRevelation] = React.useState(false);
     const [charmSelectKey, setCharmSelectKey] = React.useState(0);
     const [multiplierListKey, setMultiplierListKey] = React.useState(0);
+    // Big red-x shown on top of the page when filtered words are typed into
+    // the build name or notes; the words themselves are stripped.
+    const [showRedX, setShowRedX] = React.useState(false);
+    const redXTimeoutRef = React.useRef(null);
+
+    function triggerRedX() {
+        setShowRedX(true);
+        if (redXTimeoutRef.current) clearTimeout(redXTimeoutRef.current);
+        redXTimeoutRef.current = setTimeout(() => setShowRedX(false), 1600);
+    }
+
+    function setBuildNameFiltered(value) {
+        const { cleaned, found } = filterBadWords(String(value ?? ''));
+        if (found) triggerRedX();
+        setBuildName(cleaned);
+    }
     const [draft, setDraft] = React.useState(null); // restored session draft, if any
 
     // Read the session draft once on mount (localStorage is not available
@@ -1612,11 +1629,15 @@ export default function BuildForm({
     }
 
     function updateCharms(charmNames) {
+        // Dedupe by resolved key so a charm can never appear twice (the
+        // selector add-entry guard also blocks it; this covers loaded lists).
+        const seen = new Set();
         let charmData = charmNames
             .map((name) => {
-                if (itemData[name]) return itemData[name];
                 const key = resolveCharmKey(itemData, name);
-                return key ? itemData[key] : null;
+                if (!key || seen.has(key)) return null;
+                seen.add(key);
+                return itemData[key];
             })
             .filter(Boolean);
         setCharms(charmData);
@@ -1799,6 +1820,7 @@ export default function BuildForm({
 
     return (
         <form ref={formRef} onSubmit={sendUpdate} onReset={resetForm} id="buildForm">
+            {showRedX && <img src="/images/redx.png" className={styles.redXOverlay} alt="" />}
             {/* Top row: region/class/spec on the left, title centered, import on the right */}
             <div className={`${styles.builderTopRow} mt-3 mb-1`}>
                 <div className="d-flex flex-wrap align-items-center">
@@ -1954,7 +1976,8 @@ export default function BuildForm({
                 </div>
                 <BuilderHeader
                     text={buildName}
-                    setText={setBuildName}
+                    setText={setBuildNameFiltered}
+                    onFiltered={triggerRedX}
                     parentLoaded={parentLoaded}
                     build={build}
                     savedName={savedName}
@@ -3004,7 +3027,11 @@ export default function BuildForm({
                                 <textarea
                                     className={styles.buildNotesInput}
                                     value={notesDraft}
-                                    onChange={(e) => setNotesDraft(e.target.value)}
+                                    onChange={(e) => {
+                                        const { cleaned, found } = filterBadWords(e.target.value);
+                                        if (found) triggerRedX();
+                                        setNotesDraft(cleaned);
+                                    }}
                                     placeholder="Add notes about this build..."
                                     rows={3}
                                     maxLength={2000}
