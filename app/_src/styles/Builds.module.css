@@ -124,6 +124,47 @@
     background: var(--surface-2);
 }
 
+.rowBtn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.rowBtnPublic {
+    border-color: var(--accent, #9c59d1);
+    color: var(--accent, #9c59d1);
+}
+
+.anonBadge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid var(--glass-border);
+    background: var(--surface-2);
+    font-size: 11px;
+    color: var(--text-2);
+}
+
+.subNav {
+    margin-bottom: 16px;
+}
+
+.subNavBtn {
+    display: inline-block;
+    padding: 7px 14px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-1);
+    text-decoration: none;
+    font-weight: 500;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.subNavBtn:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
 @media (max-width: 560px) {
     .date {
         display: none;

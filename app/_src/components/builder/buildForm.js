@@ -495,6 +495,17 @@ const CZ_MAIN_TREES = [
     'Prismatic',
 ];
 
+// Resource-pack icons: class/spec skills live in images/skills (unofficial
+// mod textures where available — those are transparent), CZ abilities in
+// images/cz. Both are keyed by the snake_case of the skill name.
+const toSnakeName = (name) =>
+    String(name || '')
+        .toLowerCase()
+        .replace(/ /g, '_')
+        .replace(/'/g, '');
+const skillIconSrc = (name) => `/images/skills/${toSnakeName(name)}.png`;
+const czIconSrc = (name) => `/images/cz/${toSnakeName(name)}.png`;
+
 export default function BuildForm({
     update,
     build,
@@ -503,6 +514,9 @@ export default function BuildForm({
     notes,
     canEditNotes,
     buildId,
+    canPublicise,
+    isPublic,
+    isAnonymous,
     parentLoaded,
     itemData,
     itemsToDisplay,
@@ -525,6 +539,11 @@ export default function BuildForm({
     const [loggedIn, setLoggedIn] = React.useState(null); // null = checking
     const [notesDraft, setNotesDraft] = React.useState(notes || '');
     const [notesSaveState, setNotesSaveState] = React.useState(null); // 'saving' | 'saved' | 'error'
+    const [publicState, setPublicState] = React.useState({ isPublic: Boolean(isPublic), anonymous: Boolean(isAnonymous) });
+    const [publiciseState, setPubliciseState] = React.useState(null); // null | 'saving' | 'error' | 'profanity'
+    const [ownsBuild, setOwnsBuild] = React.useState(Boolean(canPublicise));
+    const [favState, setFavState] = React.useState(null); // null | {favourite, count}
+    const [favBusy, setFavBusy] = React.useState(false);
     const [resetConfirm, setResetConfirm] = React.useState(false);
     const resetTimeoutRef = React.useRef(null);
     const [statInputs, setStatInputs] = React.useState(DEFAULT_STAT_INPUTS);
@@ -885,6 +904,86 @@ export default function BuildForm({
             .catch(() => setLoggedIn(false));
     }, []);
 
+    // Favourite state for the build page heart (public builds only).
+    React.useEffect(() => {
+        if (!activeBuildId || !publicState.isPublic) return;
+        fetch(`/api/v1/builds/${activeBuildId}/favourite`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d) setFavState({ favourite: Boolean(d.favourite), count: d.count });
+            })
+            .catch(() => {});
+    }, [activeBuildId, publicState.isPublic]);
+
+    function setPublicVisibility(nextPublic, nextAnonymous) {
+        if (!activeBuildId || publiciseState === 'saving') return;
+        setPubliciseState('saving');
+        let profanityHit = false;
+        fetch(`/api/v1/builds/${activeBuildId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicise: nextPublic, anonymous: nextAnonymous }),
+        })
+            .then(async (r) => {
+                if (r.status === 400) {
+                    const data = await r.json().catch(() => null);
+                    if (data && data.error === 'profanity') {
+                        profanityHit = true;
+                        setPubliciseState('profanity');
+                        setTimeout(() => setPubliciseState(null), 5000);
+                        throw new Error('profanity');
+                    }
+                }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then((d) => {
+                setPublicState({ isPublic: d.isPublic, anonymous: d.anonymous });
+                setPubliciseState(null);
+                if (!d.isPublic) setFavState(null);
+            })
+            .catch(() => {
+                if (!profanityHit) {
+                    setPubliciseState('error');
+                    setTimeout(() => setPubliciseState(null), 5000);
+                }
+            });
+    }
+
+    // Before the build is saved (no activeBuildId yet) the publicise/anonymity
+    // choices are local state that rides along on the next save.
+    function togglePublic() {
+        if (activeBuildId) {
+            setPublicVisibility(!publicState.isPublic, publicState.anonymous);
+            return;
+        }
+        setPublicState((prev) => ({ ...prev, isPublic: !prev.isPublic }));
+    }
+
+    function toggleAnonymous(event) {
+        const next = Boolean(event.target.checked);
+        if (activeBuildId) {
+            setPublicVisibility(true, next);
+            return;
+        }
+        setPublicState((prev) => ({ ...prev, anonymous: next }));
+    }
+
+    function toggleFavourite() {
+        if (!activeBuildId || !publicState.isPublic || favBusy) return;
+        if (!loggedIn) {
+            window.location.href = `/api/auth/discord/login?next=${encodeURIComponent(window.location.pathname)}`;
+            return;
+        }
+        setFavBusy(true);
+        const isFav = favState ? favState.favourite : false;
+        fetch(`/api/v1/builds/${activeBuildId}/favourite`, { method: isFav ? 'DELETE' : 'POST' })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((d) => setFavState({ favourite: d.favourite, count: d.count }))
+            .catch(() => {})
+            .finally(() => setFavBusy(false));
+    }
+
     function saveBuildToServer(forking = false) {
         const token = makeBuildString();
         const tokenVersion = getBuildTokenVersion(token) ?? '';
@@ -895,6 +994,13 @@ export default function BuildForm({
             name: buildName !== 'Monumenta Builder' ? buildName : null,
             notes: notesDraft.trim() ? notesDraft : null,
         };
+        // Signed-in users can publicise / post anonymously straight from the
+        // save button; the flags ride along with the save.
+        if (loggedIn) {
+            payload.publicise = publicState.isPublic;
+            payload.anonymous = publicState.anonymous;
+        }
+        let profanityHit = false;
 
         if (activeBuildId && !forking) {
             setSaveState('saving');
@@ -906,6 +1012,7 @@ export default function BuildForm({
                     state: { token, infusions: delveInfusions, revelation },
                     name: payload.name,
                     notes: payload.notes,
+                    ...(loggedIn ? { publicise: publicState.isPublic, anonymous: publicState.anonymous } : {}),
                 }),
             })
                 .then(async (r) => {
@@ -913,6 +1020,15 @@ export default function BuildForm({
                     // anonymous build we didn't create): fork it into a new
                     // build instead of overwriting theirs.
                     if (r.status === 403) return saveBuildToServer(true);
+                    if (r.status === 400) {
+                        const data = await r.json().catch(() => null);
+                        if (data && data.error === 'profanity') {
+                            profanityHit = true;
+                            setPubliciseState('profanity');
+                            setTimeout(() => setPubliciseState(null), 5000);
+                            throw new Error('profanity');
+                        }
+                    }
                     if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
                     return r.json();
                 })
@@ -931,8 +1047,10 @@ export default function BuildForm({
                     return link;
                 })
                 .catch(() => {
-                    setSaveState('error');
-                    throw new Error('save failed');
+                    if (!profanityHit) {
+                        setSaveState('error');
+                        throw new Error('save failed');
+                    }
                 });
         }
 
@@ -943,11 +1061,24 @@ export default function BuildForm({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         })
-            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then(async (r) => {
+                if (r.status === 400) {
+                    const data = await r.json().catch(() => null);
+                    if (data && data.error === 'profanity') {
+                        profanityHit = true;
+                        setPubliciseState('profanity');
+                        setTimeout(() => setPubliciseState(null), 5000);
+                        throw new Error('profanity');
+                    }
+                }
+                if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
+                return r.json();
+            })
             .then((d) => {
                 const link = window.location.origin + getStsBase() + d.url + `?v=${Date.now()}`;
                 // Remember the row so later edits update it instead of forking.
                 setActiveBuildId(d.id);
+                if (d.savedToAccount) setOwnsBuild(true);
                 // Move the address bar onto the build itself: a reload (or
                 // sharing the tab) keeps you on the saved build. replaceState,
                 // not pushState, so Back doesn't return to the blank builder.
@@ -966,8 +1097,10 @@ export default function BuildForm({
                 return link;
             })
             .catch(() => {
-                setSaveState('error');
-                throw new Error('save failed');
+                if (!profanityHit) {
+                    setSaveState('error');
+                    throw new Error('save failed');
+                }
             });
     }
 
@@ -985,11 +1118,17 @@ export default function BuildForm({
                     return;
                 }
                 const classLabel = gameClass != 'none' ? gameClass.charAt(0).toUpperCase() + gameClass.slice(1) : null;
+                const regionLabel =
+                    czOpen && regionValue === 2
+                        ? 'Darkest Depths'
+                        : czOpen && regionValue === 3
+                          ? 'Celestial Zenith'
+                          : `R${regionValue}`;
                 const tempBuildName =
                     buildName && buildName != 'Monumenta Builder'
                         ? buildName
                         : classLabel
-                          ? `R${regionValue} ${spec || classLabel} build`
+                          ? `${regionLabel} ${spec || classLabel} build`
                           : 'Monumenta Builder';
                 navigator.clipboard.writeText(`[${tempBuildName}](${link})`).then(
                     function () {
@@ -1049,6 +1188,23 @@ export default function BuildForm({
             setCzAbilities(next);
         }
     }, [czData, regionValue]);
+
+    // Open the tree that actually contains the loaded abilities: a saved
+    // Celestial Zenith / Darkest Depths build must show its own tree instead
+    // of the default one. Only auto-switches when the current selection has
+    // none of the loaded abilities, so manual tree picks stay intact.
+    React.useEffect(() => {
+        if (!czData || !czOpen || Object.keys(czAbilities).length === 0) return;
+        const loadedNames = new Set(Object.keys(czAbilities));
+        const hasAny = (t) => t.skills.some((s) => loadedNames.has(s.name));
+        const currentHasAny = czSelectedTree
+            ? czData.trees.some((t) => t.tree === czSelectedTree && hasAny(t))
+            : false;
+        if (currentHasAny) return;
+        const allowed = CZ_MAIN_TREES.filter((t) => !(regionValue === 2 && t === 'Prismatic'));
+        const treeOf = czData.trees.find((t) => allowed.includes(t.tree) && hasAny(t));
+        if (treeOf && treeOf.tree !== czSelectedTree) setCzSelectedTree(treeOf.tree);
+    }, [czData, czOpen, czAbilities, regionValue]);
 
     // Close the open rarity menu when clicking elsewhere (but not inside the
     // menu or its button — a mousedown there must survive until the click).
@@ -2068,6 +2224,16 @@ export default function BuildForm({
                                                 >
                                                     ⠿
                                                 </span>
+                                                <img
+                                                    className={styles.skillIcon}
+                                                    src={skillIconSrc(skill.displayName || skill.name)}
+                                                    alt=""
+                                                    width={24}
+                                                    height={24}
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }}
+                                                />
                                                 <span className={styles.skillName}>{skill.displayName}</span>
                                                 <span className={styles.skillPoints}>
                                                     {points}/{maxPoints}
@@ -2178,6 +2344,16 @@ export default function BuildForm({
                                             >
                                                 ⠿
                                             </span>
+                                            <img
+                                                className={styles.skillIcon}
+                                                src={skillIconSrc(skill.displayName || skill.name)}
+                                                alt=""
+                                                width={24}
+                                                height={24}
+                                                onError={(e) => {
+                                                    e.currentTarget.style.display = 'none';
+                                                }}
+                                            />
                                             <span className={styles.skillName}>{skill.displayName}</span>
                                             <span className={styles.skillPoints}>
                                                 {points}/{maxPoints}
@@ -2319,6 +2495,16 @@ export default function BuildForm({
                                                         }
                                                         aria-label={`${ability.name} (${ability.trigger})`}
                                                     />
+                                                    <img
+                                                        className={styles.skillIcon}
+                                                        src={czIconSrc(ability.name)}
+                                                        alt=""
+                                                        width={26}
+                                                        height={26}
+                                                        onError={(e) => {
+                                                            e.currentTarget.style.display = 'none';
+                                                        }}
+                                                    />
                                                     <span className={styles.skillName}>{ability.name}</span>
                                                     <span className={styles.czTrigger}>{ability.trigger}</span>
                                                     <div className={styles.czRarityWrap}>
@@ -2406,6 +2592,62 @@ export default function BuildForm({
                     />
                 </div>
             </div>
+            {(loggedIn === true && (!activeBuildId || canPublicise || ownsBuild) && (
+                <div className={`${styles.publiciseRow} mb-1`}>
+                    <button
+                        type="button"
+                        className={`${styles.publiciseBtn}${publicState.isPublic ? ` ${styles.publiciseOn}` : ''}`}
+                        onClick={togglePublic}
+                        disabled={publiciseState === 'saving'}
+                    >
+                        {publicState.isPublic ? (
+                            <TranslatableText identifier="database.unpublish" />
+                        ) : (
+                            <TranslatableText identifier="database.publicise" />
+                        )}
+                    </button>
+                    {publicState.isPublic && (
+                        <label className={styles.anonCheck}>
+                            <input
+                                type="checkbox"
+                                checked={publicState.anonymous}
+                                onChange={toggleAnonymous}
+                                disabled={publiciseState === 'saving'}
+                            />
+                            <TranslatableText identifier="database.anonymousPost" />
+                        </label>
+                    )}
+                    {publicState.isPublic && favState && (
+                        <button
+                            type="button"
+                            className={`${styles.favBtn}${favState.favourite ? ` ${styles.favBtnOn}` : ''}`}
+                            onClick={toggleFavourite}
+                            disabled={favBusy}
+                            aria-label="Toggle favourite"
+                        >
+                            <svg viewBox="0 0 512 512" width="14" height="14" aria-hidden="true">
+                                <path
+                                    fill={favState.favourite ? 'currentColor' : 'none'}
+                                    stroke="currentColor"
+                                    strokeWidth="36"
+                                    d="M47.6 300.4 228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96.5 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z"
+                                />
+                            </svg>
+                            <span>{favState.count}</span>
+                        </button>
+                    )}
+                    {publiciseState === 'profanity' && (
+                        <span className={styles.publiciseError}>
+                            <TranslatableText identifier="database.profanity" />
+                        </span>
+                    )}
+                    {publiciseState === 'error' && (
+                        <span className={styles.publiciseError}>
+                            <TranslatableText identifier="database.publiciseError" />
+                        </span>
+                    )}
+                </div>
+            ))}
             {(saveState === 'copied' || saveState === 'error' || savedAnonymous) && (
                 <div
                     className={`${styles.copyToast}${
@@ -2558,7 +2800,7 @@ export default function BuildForm({
                             ></CharmSelector>
                         </div>
                     </div>
-                    <div className="row justify-content-center mb-1">
+            <div className="row justify-content-center mb-1">
                         {charms.map((charm) => (
                             <div
                                 className={`col-auto ${styles.builderCol}`}

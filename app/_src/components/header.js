@@ -158,6 +158,9 @@ export function HeaderNav() {
             <Link className={styles.navButton} href={base + '/builder'}>
                 <TranslatableText identifier="index.pages.builder.title" />
             </Link>
+            <Link className={styles.navButton} href={base + '/database'}>
+                <TranslatableText identifier="index.pages.database.title" />
+            </Link>
         </nav>
     );
 }

@@ -62,7 +62,7 @@ export default async function StsLayout({ children }) {
                                 <SiteNav showBeta center={<HeaderNav />}>
                                     <Header />
                                 </SiteNav>
-                                {children}
+                                <div className="site-main">{children}</div>
                                 <Footer />
                             </HideLoreProvider>
                         </LanguageContextProvider>

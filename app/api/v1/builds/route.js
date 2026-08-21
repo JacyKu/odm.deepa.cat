@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { saveBuild } from '../../../../lib/sts-builds';
+import { saveBuild, setBuildPublic } from '../../../../lib/sts-builds';
 import { decodeBuildParam, getBuildTokenVersion } from '../../../_src/utils/builder/buildUrlCodec';
-import { getItemData } from '../../../_src/utils/itemsData';
+import { getItemData, getSkillsData } from '../../../_src/utils/itemsData';
+import { computeBuildSummary, hasProfanity } from '../../../../lib/public-builds';
 import { getDiscordUser } from '../../../../lib/session';
 
 export async function POST(request) {
@@ -12,26 +13,43 @@ export async function POST(request) {
     }
 
     // Reject strings that don't decode to a build.
-    const itemData = await getItemData();
+    const [itemData, skillsData] = await Promise.all([getItemData(), getSkillsData()]);
     if (!decodeBuildParam(token, itemData)) {
         return NextResponse.json({ error: 'invalid build' }, { status: 400 });
     }
 
     const user = await getDiscordUser();
+    // Publicising at save time must pass the same profanity gate as the
+    // publicise endpoint: never surface a build with blocked words.
+    if (user && body.publicise && hasProfanity({ name: body.name, notes: body.notes, token, itemData })) {
+        return NextResponse.json({ error: 'profanity' }, { status: 400 });
+    }
+
     const state = {
         token,
         infusions: body.infusions && typeof body.infusions === 'object' ? body.infusions : {},
         revelation: Boolean(body.revelation),
     };
+    const summary = computeBuildSummary(token, itemData, skillsData);
     const result = saveBuild({
         state,
         userId: user ? user.id : null,
         name: body.name || null,
         // Notes are a signed-in feature: anonymous saves never carry them.
         notes: user ? body.notes || null : null,
+        summary,
     });
     if (!result) {
         return NextResponse.json({ error: 'invalid build' }, { status: 400 });
+    }
+    if (user && body.publicise) {
+        setBuildPublic(result.id, user.id, null, {
+            isPublic: true,
+            anonymous: Boolean(body.anonymous),
+            authorName: user.globalName || user.username,
+            authorAvatar: user.avatar || null,
+            summary,
+        });
     }
     const tokenVersion = getBuildTokenVersion(token) ?? '';
     const res = NextResponse.json({

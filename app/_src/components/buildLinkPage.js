@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { getBuild } from '../../../lib/sts-builds';
 import { getDiscordUser } from '../../../lib/session';
 import { getItemData, getSkillsData } from '../utils/itemsData';
@@ -65,6 +65,12 @@ export async function BuildLinkPageView(id) {
     const itemData = await getItemData();
     // The build opens in place; saves update the DB row, they don't rewrite URLs.
     const user = await getDiscordUser();
+    const isOwner = Boolean(user && row.user_id && user.id === row.user_id);
+    // Anonymous rows are editable + publicisable by whoever holds their
+    // creator cookie (the browser that created them), even after logging in.
+    const cookieStore = await cookies();
+    const creatorToken = cookieStore.get(`sts-build-owner-${id}`)?.value || null;
+    const isCreator = Boolean(user && !row.user_id && creatorToken);
     return (
         <BuilderPage
             build={row.token}
@@ -72,8 +78,11 @@ export async function BuildLinkPageView(id) {
             savedState={row.parsedState}
             savedName={row.name}
             notes={row.notes}
-            canEditNotes={Boolean(user && row.user_id && user.id === row.user_id)}
+            canEditNotes={isOwner || isCreator}
             buildId={id}
+            canPublicise={isOwner || isCreator}
+            isPublic={row.is_public === 1}
+            isAnonymous={row.anonymous === 1}
         />
     );
 }

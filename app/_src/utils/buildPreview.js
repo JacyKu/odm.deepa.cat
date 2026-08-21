@@ -30,6 +30,21 @@ function parseCharmPreview(charmValue, itemData) {
     }
 }
 
+// The token stores Darkest Depths as region 2 and Celestial Zenith as region
+// 3 (the builder maps 'dd'/'cz' onto those). They're only distinguishable
+// from plain Isles/Ring when the build actually has CZ/DD abilities, so the
+// label depends on hasCz.
+export function getRegionLabel(region, hasCz = false) {
+    if (hasCz) {
+        if (region === 2) return 'Darkest Depths';
+        if (region === 3) return 'Celestial Zenith';
+    }
+    if (region === 1) return 'Valley';
+    if (region === 2) return 'Isles';
+    if (region === 3) return 'Ring';
+    return null;
+}
+
 export function getLinkPreviewData(build, itemData, skillsData) {
     const decoded = decodeBuildParam(build, itemData);
     if (!decoded) return null;
@@ -57,8 +72,16 @@ export function getLinkPreviewData(build, itemData, skillsData) {
         const nameValue = params.get('name') || null;
 
         const className = params.get('cl') || null;
+        // The binary token omits stats at their defaults, so a Ring build has
+        // no region param at all. Number(null) would be 0, which would break
+        // every region check — default to 3 when absent.
         const regionRaw = params.get('region');
-        const region = Number.isFinite(Number(regionRaw)) ? Number(regionRaw) : 3;
+        const region =
+            regionRaw === null || regionRaw === ''
+                ? 3
+                : Number.isFinite(Number(regionRaw))
+                  ? Number(regionRaw)
+                  : 3;
         const ascRaw = params.get('asc');
         const ascension = Number.isFinite(Number(ascRaw)) ? Number(ascRaw) : 0;
 
@@ -139,6 +162,10 @@ export function getLinkPreviewData(build, itemData, skillsData) {
             czAbilities,
             ascension,
             region,
+            // Human-readable region for DD/CZ builds ("Darkest Depths" /
+            // "Celestial Zenith"); null for plain Valley/Isles/Ring, where
+            // callers keep showing the compact "R1".."R3" form.
+            regionLabel: czAbilities.length > 0 ? getRegionLabel(region, true) : null,
         };
     } catch (e) {
         return null;
@@ -209,13 +236,15 @@ export function getLinkPreviewDescription(build, itemData, skillsData, infusions
 }
 
 // The build name shown when the user hasn't typed one: "R3 Swordsage build" /
-// "R1 Rogue build" (region 1-3, spec name if picked, otherwise the class).
+// "R1 Rogue build" (region 1-3, spec name if picked, otherwise the class),
+// or "Darkest Depths Berserker build" for the special regions.
 export function getEffectiveBuildName(data, buildName) {
     const explicitName = data?.name || (buildName && buildName !== 'Monumenta Builder' ? buildName : null);
     if (explicitName) return explicitName;
     if (data?.className) {
         const region = [1, 2, 3].includes(data.region) ? data.region : 3;
-        return `R${region} ${data.spec || data.className} build`;
+        const regionName = data.regionLabel || `R${region}`;
+        return `${regionName} ${data.spec || data.className} build`;
     }
     return null;
 }

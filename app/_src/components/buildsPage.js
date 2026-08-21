@@ -87,12 +87,38 @@ export default function BuildsPage() {
         }
     }
 
+    function togglePublic(build) {
+        const nextPublic = !build.isPublic;
+        setBuilds((prev) => prev.map((b) => (b.id === build.id ? { ...b, publicBusy: true } : b)));
+        fetch(`/api/v1/builds/${build.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicise: nextPublic, anonymous: build.anonymous }),
+        })
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((d) => {
+                setBuilds((prev) =>
+                    prev.map((b) => (b.id === build.id ? { ...b, isPublic: d.isPublic, anonymous: d.anonymous } : b))
+                );
+            })
+            .catch(() => setError('publicise'));
+    }
+
+    function clearError() {
+        setError(null);
+    }
+
     return (
         <div className="container-fluid">
             <main className={styles.page}>
                 <h1 className={styles.title}>
                     <TranslatableText identifier="builds.title" />
                 </h1>
+                <div className={styles.subNav}>
+                    <Link className={styles.subNavBtn} href={base + '/builds/favourites'}>
+                        <TranslatableText identifier="database.favTitle" />
+                    </Link>
+                </div>
 
                 {!authChecked ? (
                     <p className={styles.muted}>
@@ -108,9 +134,15 @@ export default function BuildsPage() {
                         </a>
                     </div>
                 ) : error ? (
-                    <p className={styles.error}>
+                    <p className={styles.error} onClick={clearError} title="Dismiss">
                         <TranslatableText
-                            identifier={error === 'rename' ? 'builds.renameError' : 'builds.deleteError'}
+                            identifier={
+                                error === 'rename'
+                                    ? 'builds.renameError'
+                                    : error === 'delete'
+                                      ? 'builds.deleteError'
+                                      : 'database.publiciseError'
+                            }
                         />
                     </p>
                 ) : !loaded ? (
@@ -146,6 +178,26 @@ export default function BuildsPage() {
                                 <span className={styles.date}>
                                     {new Date((build.updatedAt || build.createdAt) + 'Z').toLocaleString()}
                                 </span>
+                                <button
+                                    type="button"
+                                    className={`${styles.rowBtn}${
+                                        build.isPublic ? ` ${styles.rowBtnPublic}` : ''
+                                    }`}
+                                    onClick={() => togglePublic(build)}
+                                    disabled={build.publicBusy}
+                                    title={build.isPublic ? 'Make private' : 'Publicise'}
+                                >
+                                    {build.isPublic ? (
+                                        <TranslatableText identifier="database.publicBadge" />
+                                    ) : (
+                                        <TranslatableText identifier="database.publicise" />
+                                    )}
+                                    {build.isPublic && build.anonymous && (
+                                        <span className={styles.anonBadge}>
+                                            <TranslatableText identifier="database.anonBadge" />
+                                        </span>
+                                    )}
+                                </button>
                                 <button
                                     type="button"
                                     className={styles.rowBtn}

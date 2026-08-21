@@ -190,6 +190,13 @@ export const DELVE_INFUSIONS = [
     },
     // Special infusions (same slot as delve infusions)
     {
+        name: 'Understanding',
+        material: '',
+        source: '',
+        region: 1,
+        effect: 'All non-Delve Infusions you are currently benefitting from gain (Understanding level * .2) levels.',
+    },
+    {
         name: 'Sturdy',
         material: 'Ruck',
         source: 'Diamenean Hunts',

@@ -362,6 +362,7 @@ export async function GET(request) {
     const className = data.className || null;
     const spec = data.spec || null;
     const region = data.region;
+    const regionDisplay = data.regionLabel || ([1, 2, 3].includes(region) ? `R${region}` : null);
     const totalSkillPoints = (data.skills || []).reduce((sum, s) => sum + (Number(s.points) || 0), 0);
     const totalSpecPoints = (data.specSkills || []).reduce((sum, s) => sum + (Number(s.points) || 0), 0);
     const hasCz = (data.czAbilities || []).length > 0;
@@ -431,7 +432,7 @@ export async function GET(request) {
 
             {hasBuildInfo && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {[1, 2, 3].includes(region) && <InfoItem label="REGION" value={`R${region}`} />}
+                    {regionDisplay && <InfoItem label="REGION" value={regionDisplay} />}
                     {className && <InfoItem label="CLASS" value={className} />}
                     {spec && <InfoItem label="SPEC" value={spec} />}
                     {totalSkillPoints > 0 && <InfoItem label="SKILL POINTS" value={String(totalSkillPoints)} />}
@@ -451,7 +452,9 @@ export async function GET(request) {
 
             {hasCz && data.czAbilities.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 10 }}>
-                    <div style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700 }}>CELESTIAL ZENITH</div>
+                    <div style={{ fontSize: 12, letterSpacing: 2, color: DIM, fontWeight: 700 }}>
+                        {region === 2 ? 'DARKEST DEPTHS' : 'CELESTIAL ZENITH'}
+                    </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {data.czAbilities.map((a) => (
                             <div

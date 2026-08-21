@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getBuild, updateBuild, updateBuildState, deleteBuild } from '../../../../../lib/sts-builds';
+import { getBuild, updateBuild, updateBuildState, deleteBuild, setBuildPublic } from '../../../../../lib/sts-builds';
+import { computeBuildSummary, hasProfanity } from '../../../../../lib/public-builds';
 import { getDiscordUser } from '../../../../../lib/session';
 import { decodeBuildParam } from '../../../../_src/utils/builder/buildUrlCodec';
-import { getItemData } from '../../../../_src/utils/itemsData';
+import { getItemData, getSkillsData } from '../../../../_src/utils/itemsData';
 
 export async function GET(request, { params }) {
     const p = await params;
@@ -33,7 +34,7 @@ export async function PATCH(request, { params }) {
         if (!token || token.length > 2048) {
             return NextResponse.json({ error: 'invalid token' }, { status: 400 });
         }
-        const itemData = await getItemData();
+        const [itemData, skillsData] = await Promise.all([getItemData(), getSkillsData()]);
         if (!decodeBuildParam(token, itemData)) {
             return NextResponse.json({ error: 'invalid build' }, { status: 400 });
         }
@@ -52,11 +53,67 @@ export async function PATCH(request, { params }) {
         if (body.notes !== undefined && body.notes !== null) {
             update.notes = typeof body.notes === 'string' ? body.notes : '';
         }
+        const summary = computeBuildSummary(token, itemData, skillsData);
+        // Public builds refresh their denormalized filter columns on every
+        // save so the database never shows stale data.
+        const row = getBuild(p.id);
+        const wantsPublic = body.publicise !== undefined ? Boolean(body.publicise) : row && row.is_public === 1;
+        if (wantsPublic && hasProfanity({ name: update.name, notes: update.notes, token, itemData })) {
+            return NextResponse.json({ error: 'profanity' }, { status: 400 });
+        }
+        if (row && row.is_public === 1) {
+            update.summary = summary;
+        }
         const creatorToken = request.cookies.get(`sts-build-owner-${p.id}`)?.value || null;
         if (!updateBuildState(p.id, user ? user.id : null, creatorToken, update)) {
             return NextResponse.json({ error: 'build not found or not yours' }, { status: 403 });
         }
+        // Publicise / adjust anonymity as part of the same save when asked.
+        if (body.publicise !== undefined && user) {
+            setBuildPublic(p.id, user.id, creatorToken, {
+                isPublic: Boolean(body.publicise),
+                anonymous: Boolean(body.anonymous),
+                authorName: user.globalName || user.username,
+                authorAvatar: user.avatar || null,
+                summary,
+            });
+        }
         return NextResponse.json({ ok: true });
+    }
+
+    // Publicise / de-publicise a build. Requires a signed-in Discord user who
+    // owns the build (or holds the creator token of an anonymous row).
+    if (body?.publicise !== undefined) {
+        const sessionUser = await getDiscordUser();
+        if (!sessionUser) {
+            return NextResponse.json({ error: 'not authenticated' }, { status: 401 });
+        }
+        const row = getBuild(p.id);
+        if (!row) {
+            return NextResponse.json({ error: 'build not found' }, { status: 404 });
+        }
+        const isPublic = Boolean(body.publicise);
+        const anonymous = Boolean(body.anonymous);
+        if (isPublic) {
+            // Never surface builds whose name/notes carry blocked words.
+            if (hasProfanity({ name: row.name, notes: row.notes, token: row.token, itemData: await getItemData() })) {
+                return NextResponse.json({ error: 'profanity' }, { status: 400 });
+            }
+        }
+        const [itemData, skillsData] = await Promise.all([getItemData(), getSkillsData()]);
+        const summary = computeBuildSummary(row.token, itemData, skillsData);
+        const creatorToken = request.cookies.get(`sts-build-owner-${p.id}`)?.value || null;
+        const ok = setBuildPublic(p.id, sessionUser.id, creatorToken, {
+            isPublic,
+            anonymous,
+            authorName: sessionUser.globalName || sessionUser.username,
+            authorAvatar: sessionUser.avatar || null,
+            summary,
+        });
+        if (!ok) {
+            return NextResponse.json({ error: 'build not found or not yours' }, { status: 403 });
+        }
+        return NextResponse.json({ ok: true, isPublic, anonymous });
     }
 
     // Metadata-only update (name / notes) stays owner-only.

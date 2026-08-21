@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listBuildsByUser } from '../../../../../lib/sts-builds';
+import { listBuildsByUser, getFavouriteState } from '../../../../../lib/sts-builds';
 import { getDiscordUser } from '../../../../../lib/session';
 import { getBuildTokenVersion } from '../../../../_src/utils/builder/buildUrlCodec';
 
@@ -16,6 +16,9 @@ export async function GET() {
         createdAt: b.created_at,
         updatedAt: b.updated_at,
         state: b.parsedState,
+        isPublic: b.is_public === 1,
+        anonymous: b.anonymous === 1,
+        favouriteCount: getFavouriteState(b.id, user.id).count,
         url: `/b/v${getBuildTokenVersion(b.token) ?? ''}/${b.id}`,
     }));
     return NextResponse.json({ builds });

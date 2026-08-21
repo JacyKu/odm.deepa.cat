@@ -156,10 +156,23 @@ html a:hover {
     color: inherit;
 }
 
+/* Keep the footer at the bottom of the screen when a page is short: the
+   layout column fills the viewport and the content area grows, pushing the
+   footer down. Nothing is sticky — long pages scroll normally. */
+.site-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+.site-main {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
 main {
-    /* Keep the footer at the bottom of short pages without overflowing:
-       the main sits between the header and the footer. */
-    min-height: calc(100dvh - 65px - 95px);
+    flex: 1 0 auto;
 }
 
 html h1 {

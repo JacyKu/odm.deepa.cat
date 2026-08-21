@@ -913,6 +913,87 @@
     color: var(--text-on-accent);
 }
 
+.publiciseRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-inline: 0.25vw;
+}
+
+.publiciseBtn {
+    padding: 0.5vh 1.2vw;
+    min-height: 34px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-1);
+    cursor: pointer;
+    font-weight: 500;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.publiciseBtn:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.publiciseBtn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.publiciseOn {
+    border-color: var(--accent, #9c59d1);
+    color: var(--accent, #9c59d1);
+}
+
+.anonCheck {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-2);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.anonCheck input {
+    accent-color: var(--accent, #9c59d1);
+}
+
+.favBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    min-height: 34px;
+    border: 2px solid var(--glass-border);
+    background: var(--glass-1);
+    color: var(--text-2);
+    cursor: pointer;
+    font-weight: 700;
+    transition:
+        color 150ms ease,
+        border-color 150ms ease;
+}
+
+.favBtn:hover {
+    color: var(--negative, #ce2d27);
+    border-color: var(--negative, #ce2d27);
+}
+
+.favBtnOn {
+    color: var(--negative, #ce2d27);
+    border-color: var(--negative, #ce2d27);
+}
+
+.publiciseError {
+    color: var(--negative, #ce2d27);
+    font-size: 13px;
+}
+
 .builderPage {
     color: var(--text-1);
 }
@@ -977,6 +1058,11 @@
     border: 2px solid var(--glass-border);
     background: var(--glass-2);
     cursor: help;
+}
+
+.skillIcon {
+    image-rendering: pixelated;
+    flex-shrink: 0;
 }
 
 .skillRow:hover {
