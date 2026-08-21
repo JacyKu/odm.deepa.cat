@@ -24,8 +24,10 @@ export async function PATCH(request, { params }) {
     const body = await request.json().catch(() => null);
 
     // Editing a saved build keeps the same link: the state (token + infusions
-    // + revelation) is written in place. Anonymous rows are shareable by
-    // anyone, so they can be updated without an account too.
+    // + revelation) is written in place. Only the owner of an owned row, or
+    // the creator (cookie) of an anonymous row, may do this — anyone else
+    // gets a 403 so the client forks into a new build instead of overwriting
+    // someone else's.
     if (body?.state) {
         const token = typeof body.state.token === 'string' ? body.state.token : '';
         if (!token || token.length > 2048) {
@@ -42,16 +44,17 @@ export async function PATCH(request, { params }) {
                 revelation: Boolean(body.state.revelation),
             },
         };
-        if (body.name !== undefined) {
+        if (body.name !== undefined && body.name !== null) {
             const name = typeof body.name === 'string' ? body.name.trim() : '';
             if (!name) return NextResponse.json({ error: 'invalid name' }, { status: 400 });
             update.name = name;
         }
-        if (body.notes !== undefined) {
+        if (body.notes !== undefined && body.notes !== null) {
             update.notes = typeof body.notes === 'string' ? body.notes : '';
         }
-        if (!updateBuildState(p.id, user ? user.id : null, update)) {
-            return NextResponse.json({ error: 'build not found' }, { status: 404 });
+        const creatorToken = request.cookies.get(`sts-build-owner-${p.id}`)?.value || null;
+        if (!updateBuildState(p.id, user ? user.id : null, creatorToken, update)) {
+            return NextResponse.json({ error: 'build not found or not yours' }, { status: 403 });
         }
         return NextResponse.json({ ok: true });
     }

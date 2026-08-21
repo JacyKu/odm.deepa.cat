@@ -868,7 +868,7 @@ export default function BuildForm({
             .catch(() => setLoggedIn(false));
     }, []);
 
-    function saveBuildToServer() {
+    function saveBuildToServer(forking = false) {
         const token = makeBuildString();
         const tokenVersion = getBuildTokenVersion(token) ?? '';
         const payload = {
@@ -879,7 +879,7 @@ export default function BuildForm({
             notes: notesDraft.trim() ? notesDraft : null,
         };
 
-        if (activeBuildId) {
+        if (activeBuildId && !forking) {
             setSaveState('saving');
             setSavedAnonymous(false);
             return fetch(`/api/v1/builds/${activeBuildId}`, {
@@ -891,8 +891,16 @@ export default function BuildForm({
                     notes: payload.notes,
                 }),
             })
-                .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-                .then(() => {
+                .then(async (r) => {
+                    // 403 = this build belongs to someone else (or an
+                    // anonymous build we didn't create): fork it into a new
+                    // build instead of overwriting theirs.
+                    if (r.status === 403) return saveBuildToServer(true);
+                    if (!r.ok) return Promise.reject(new Error('HTTP ' + r.status));
+                    return r.json();
+                })
+                .then((result) => {
+                    if (typeof result === 'string') return result; // fork already completed
                     const link = window.location.origin + getStsBase() + `/b/v${tokenVersion}/${activeBuildId}`;
                     setSaveState('copied');
                     setSavedAnonymous(false);
@@ -2356,7 +2364,7 @@ export default function BuildForm({
                         type="button"
                         className={styles.shareButton}
                         id="saveBuild"
-                        onClick={saveBuildToServer}
+                        onClick={() => saveBuildToServer()}
                         disabled={saveState === 'saving'}
                     >
                         {saveState === 'saving' ? 'Saving...' : saveState === 'copied' ? 'Copied!' : 'Copy/Save'}

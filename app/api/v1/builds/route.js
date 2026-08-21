@@ -34,10 +34,25 @@ export async function POST(request) {
         return NextResponse.json({ error: 'invalid build' }, { status: 400 });
     }
     const tokenVersion = getBuildTokenVersion(token) ?? '';
-    return NextResponse.json({
+    const res = NextResponse.json({
         id: result.id,
         isNew: result.isNew,
         savedToAccount: Boolean(user),
         url: `/b/v${tokenVersion}/${result.id}`,
     });
+    // Anonymous rows are editable in place only by the browser that created
+    // them: hand out the creator token as an httpOnly cookie. (Set manually:
+    // NextResponse.cookies.set is dropped by the dev server in Next 16.)
+    if (!user && result.creatorToken) {
+        const parts = [
+            `sts-build-owner-${result.id}=${result.creatorToken}`,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Lax',
+            'Max-Age=31536000',
+        ];
+        if (process.env.NODE_ENV === 'production') parts.push('Secure');
+        res.headers.set('Set-Cookie', parts.join('; '));
+    }
+    return res;
 }
