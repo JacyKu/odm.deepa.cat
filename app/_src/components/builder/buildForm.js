@@ -901,7 +901,10 @@ export default function BuildForm({
                 })
                 .then((result) => {
                     if (typeof result === 'string') return result; // fork already completed
-                    const link = window.location.origin + getStsBase() + `/b/v${tokenVersion}/${activeBuildId}`;
+                    const link =
+                        window.location.origin +
+                        getStsBase() +
+                        `/b/v${tokenVersion}/${activeBuildId}?v=${Date.now()}`;
                     setSaveState('copied');
                     setSavedAnonymous(false);
                     if (navigator.clipboard) {
@@ -925,7 +928,7 @@ export default function BuildForm({
         })
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
             .then((d) => {
-                const link = window.location.origin + getStsBase() + d.url;
+                const link = window.location.origin + getStsBase() + d.url + `?v=${Date.now()}`;
                 // Remember the row so later edits update it instead of forking.
                 setActiveBuildId(d.id);
                 // Move the address bar onto the build itself: a reload (or
