@@ -342,7 +342,7 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
                         >
                             {s.g === 'c' ? (
                                 <img
-                                    className={styles.classIcon}
+                                    className={`${styles.classIcon} ${styles.frameCrop}`}
                                     src={czIcon(s)}
                                     alt=""
                                     width={24}

@@ -1065,6 +1065,16 @@
     flex-shrink: 0;
 }
 
+/* Animated texture-pack icons are vertical frame strips (e.g. 16x160); the
+   browser would render every frame at once, so crop to the first frame.
+   aspect-ratio counters Tailwind's preflight `img { height: auto }`, which
+   would otherwise keep the strip's tall box (object-fit can't crop then). */
+.frameCrop {
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: top;
+}
+
 .skillRow:hover {
     border-color: var(--control-border-hover);
 }

@@ -2496,7 +2496,7 @@ export default function BuildForm({
                                                         aria-label={`${ability.name} (${ability.trigger})`}
                                                     />
                                                     <img
-                                                        className={styles.skillIcon}
+                                                        className={`${styles.skillIcon} ${styles.frameCrop}`}
                                                         src={czIconSrc(ability.name)}
                                                         alt=""
                                                         width={26}
