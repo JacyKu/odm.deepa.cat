@@ -3,6 +3,7 @@ import CharmFormatter from '../../utils/items/charmFormatter';
 import TranslatableText from '../translatableText';
 import React from 'react';
 import { useLowResource } from '../lowResourceContext';
+import { useHideObtainment } from './hideObtainmentContext';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 
 function camelCase(str) {
@@ -74,6 +75,7 @@ export default function CharmTile(data) {
     const [baseBackgroundClass, setBaseBackgroundClass] = React.useState('monumenta-charms');
     const [spriteMap, setSpriteMap] = React.useState(null);
     const { lowRes } = useLowResource();
+    const { hidden: hideObtainment } = useHideObtainment();
 
     let formattedCharm = CharmFormatter.formatCharm(item.stats);
 
@@ -152,8 +154,12 @@ export default function CharmTile(data) {
                 <span className={styles[camelCase(item.tier)]}>{item.tier != 'Base' ? `${item.tier} ` : ''}Charm</span>
             </span>
             <span className={styles[camelCase(item.location)]}>{item.location}</span>
-            {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
-            {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{`${item.extras.notes}`}</p> : ''}
+            {!hideObtainment && (
+                <>
+                    {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
+                    {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{`${item.extras.notes}`}</p> : ''}
+                </>
+            )}
         </div>
     );
 }

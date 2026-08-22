@@ -5,6 +5,7 @@ import React from 'react';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
+import { useHideObtainment } from './hideObtainmentContext';
 import { useLowResource } from '../lowResourceContext';
 
 function camelCase(str, upper) {
@@ -51,6 +52,7 @@ function doesNameContainNonASCII(name) {
 export default function ItemTile(data) {
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
+    const { hidden: hideObtainment } = useHideObtainment();
     const { lowRes } = useLowResource();
     const [cssClass, setCssClass] = React.useState(getItemsheetClass(item.name));
     const [baseBackgroundClass, setBaseBackgroundClass] = React.useState('monumenta-items');
@@ -134,8 +136,12 @@ export default function ItemTile(data) {
             </span>
             <span className={styles[camelCase(item.location)]}>{item.location}</span>
             {item.lore && !hideLore ? <span className={styles.infoText}>{item.lore}</span> : ''}
-            {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
-            {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{item.extras.notes}</p> : ''}
+            {!hideObtainment && (
+                <>
+                    {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
+                    {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{item.extras.notes}</p> : ''}
+                </>
+            )}
         </div>
     );
 }

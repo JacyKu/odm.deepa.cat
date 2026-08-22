@@ -4,6 +4,7 @@ import React from 'react';
 import Select from 'react-select';
 import TranslatableText from './translatableText';
 import LoreToggle from './items/loreToggle';
+import ObtainmentToggle from './items/obtainmentToggle';
 import styles from '../styles/Header.module.css';
 import Link from 'next/link';
 import { getStsBase } from '../utils/base';
@@ -247,6 +248,7 @@ export default function Header() {
                     Hide Textures
                 </label>
                 <LoreToggle className={styles.loreToggle} />
+                <ObtainmentToggle className={styles.loreToggle} />
                 <HeaderSelect
                     instanceId="font"
                     options={fontOptions}

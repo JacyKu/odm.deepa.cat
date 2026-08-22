@@ -5,6 +5,7 @@ import TranslatableText from '../translatableText';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
+import { useHideObtainment } from './hideObtainmentContext';
 import { useLowResource } from '../lowResourceContext';
 
 function camelCase(str, upper) {
@@ -129,6 +130,7 @@ export default function MasterworkableItemTile(data) {
     // This is an array
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
+    const { hidden: hideObtainment } = useHideObtainment();
     const { lowRes } = useLowResource();
 
     // If the item name has accented characters, they are actually not present in the item's name property,
@@ -341,12 +343,12 @@ export default function MasterworkableItemTile(data) {
             {!activeItem.undiscovered ? (
                 <div>
                     {activeItem.lore && !hideLore ? <span className={styles.infoText}>{activeItem.lore}</span> : ''}
-                    {activeItem.extras?.poi ? (
+                    {!hideObtainment && activeItem.extras?.poi ? (
                         <p className={`${styles.infoText} m-0`}>{`Found in ${activeItem.extras.poi}`}</p>
                     ) : (
                         ''
                     )}
-                    {activeItem.extras?.notes ? (
+                    {!hideObtainment && activeItem.extras?.notes ? (
                         <p className={`${styles.infoText} m-0`}>{activeItem.extras.notes}</p>
                     ) : (
                         ''

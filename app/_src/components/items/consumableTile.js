@@ -5,6 +5,7 @@ import TranslatableText from '../translatableText';
 import React from 'react';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 import { useHideLore } from './hideLoreContext';
+import { useHideObtainment } from './hideObtainmentContext';
 
 const MAX_FISH_QUALITY = 5;
 
@@ -48,6 +49,7 @@ function getFishQualityElement(fishQuality) {
 export default function ConsumableTile(data) {
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
+    const { hidden: hideObtainment } = useHideObtainment();
     let formattedEffects = ConsumableFormatter.formatEffects(item.effects);
 
     const [cssClass, setCssClass] = React.useState(getItemsheetClass(item.name));
@@ -121,8 +123,12 @@ export default function ConsumableTile(data) {
             {formattedEffects}
             <Enchants item={item}></Enchants>
             {item.lore && !hideLore ? <span className={styles.infoText}>{item.lore}</span> : ''}
-            {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
-            {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{item.extras.notes}</p> : ''}
+            {!hideObtainment && (
+                <>
+                    {item.extras?.poi ? <p className={`${styles.infoText} m-0`}>{`Found in ${item.extras.poi}`}</p> : ''}
+                    {item.extras?.notes ? <p className={`${styles.infoText} m-0`}>{item.extras.notes}</p> : ''}
+                </>
+            )}
         </div>
     );
 }
