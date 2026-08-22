@@ -8,6 +8,8 @@ import { useHideLore } from './hideLoreContext';
 import { useHideObtainment } from './hideObtainmentContext';
 import { useMaxMasterwork } from './maxMasterworkContext';
 import { useLowResource } from '../lowResourceContext';
+import { useBuildList } from './buildListContext';
+import { useBuildListEnabled } from './buildListEnabledContext';
 
 function camelCase(str, upper) {
     if (!str) return '';
@@ -134,6 +136,8 @@ export default function MasterworkableItemTile(data) {
     const { hidden: hideObtainment } = useHideObtainment();
     const { enabled: maxMasterworkDefault } = useMaxMasterwork();
     const { lowRes } = useLowResource();
+    const { items: listItems, toggleItem } = useBuildList();
+    const { enabled: buildListEnabled } = useBuildListEnabled();
 
     // If the item name has accented characters, they are actually not present in the item's name property,
     // but they are present in the item's key. In that case, set the name to the key.
@@ -234,6 +238,20 @@ export default function MasterworkableItemTile(data) {
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
+            {buildListEnabled && (
+                <button
+                    type="button"
+                    className={`${styles.listAddButton}${listItems.includes(data.name) ? ` ${styles.listAddButtonOn}` : ''}`}
+                    onClick={() => toggleItem(data.name, item[0]?.type)}
+                    aria-label={
+                        listItems.includes(data.name)
+                            ? `Remove ${data.name} from build list`
+                            : `Add ${data.name} to build list`
+                    }
+                >
+                    {listItems.includes(data.name) ? '✓' : '+'}
+                </button>
+            )}
             <div className={styles.imageIcon}>
                 {lowRes ? (
                     <div className={styles.lowResIcon}></div>

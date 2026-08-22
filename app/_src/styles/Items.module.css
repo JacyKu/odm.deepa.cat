@@ -29,6 +29,7 @@
     padding: 8px;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 :global(html[data-theme='light']) .itemTile {
@@ -85,6 +86,18 @@
     display: flex;
     justify-content: center;
     padding: 20px;
+}
+
+/* Slightly enlarge the 64px spritesheet tiles (scale keeps the layout box,
+   so the artwork grows into the surrounding padding without cropping).
+   The upscale resamples the bitmap; pixel-art sprites stay sharp with
+   nearest-neighbour rendering instead of the default blurry bilinear. */
+.imageIcon > :global(.monumenta-items),
+.imageIcon > :global(.monumenta-charms),
+.imageIcon > :global(.minecraft) {
+    transform: scale(1.15);
+    image-rendering: pixelated;
+    -webkit-optimize-contrast: pixelated;
 }
 
 .lowResIcon {
@@ -1083,9 +1096,18 @@
     cursor: grab;
     user-select: none;
     color: var(--text-2);
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1;
-    padding: 0 2px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition:
+        color 120ms ease,
+        background-color 120ms ease;
+}
+
+.dragHandle:hover {
+    color: var(--text-1);
+    background: #ffffff18;
 }
 
 .dragHandle:active {
@@ -1094,6 +1116,14 @@
 
 .skillDragging {
     opacity: 0.35;
+    border-style: dashed;
+    border-color: var(--accent, #9c59d1);
+}
+
+.skillDragOver {
+    outline: 2px solid var(--accent, #9c59d1);
+    outline-offset: -2px;
+    background: #9c59d12a;
 }
 
 .redXOverlay {
@@ -1381,6 +1411,173 @@
     font-size: 13px;
     text-align: center;
     margin-top: 4px;
+}
+
+/* Build list ("shopping list"): small + / check button on each item tile. */
+.listAddButton {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass-2);
+    border: 1px solid var(--control-border);
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 3;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.listAddButton:hover {
+    border-color: var(--control-border-hover);
+    color: var(--text-1);
+}
+
+.listAddButtonOn {
+    background: #2c0860;
+    border-color: #7a4fd0;
+    color: #fff;
+}
+
+/* Build list panel pinned top-left of the items page (collapsible). */
+.listPanelWrap {
+    position: fixed;
+    top: 110px;
+    left: 20px;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: min(320px, calc(100vw - 40px));
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--glass-1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 2px solid var(--glass-border);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    padding: 12px;
+}
+
+:global(html[data-theme='light']) .listPanelWrap {
+    background: #fff;
+}
+
+.listPanelHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.listCollapseBtn {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--control-border);
+    color: var(--text-2);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.listCollapseBtn:hover {
+    border-color: var(--control-border-hover);
+    color: var(--text-1);
+}
+
+.listPanelTitle {
+    font-weight: bold;
+    color: var(--text-1);
+    font-size: 14px;
+}.listPanelEmpty {
+    color: var(--text-2);
+    font-size: 13px;
+    font-style: italic;
+}
+
+.listRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+}
+
+.listRowName {
+    flex: 1;
+    color: var(--text-2);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.listRowRemove {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--control-border);
+    color: var(--text-2);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.listRowRemove:hover {
+    border-color: #e0526b;
+    color: #e0526b;
+}
+
+.listPanelActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.listClearButton {
+    padding: 8px 20px;
+    border: 2px solid var(--control-border);
+    border-radius: 0;
+    background: var(--glass-1);
+    color: var(--text-1);
+    font-weight: bold;
+    cursor: pointer;
+    transition:
+        border-color 150ms ease,
+        background-color 150ms ease;
+}
+
+.listClearButton:hover {
+    border-color: var(--control-border-hover);
+    background: var(--glass-2);
+}
+
+.listRowInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.listRowDesc {
+    color: var(--text-2);
+    font-size: 12px;
+    opacity: 0.75;
 }
 
 /* Total charm stats (effect summary) shown after the builder stat cards. */

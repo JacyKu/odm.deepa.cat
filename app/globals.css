@@ -181,6 +181,19 @@ html h1 {
     line-height: 1.2;
 }
 
+/* "Hide textures" mode: hide every in-game texture site-wide (class/spec,
+   skill, CZ ability and tree icons, item sprites in build-card previews).
+   The item tiles themselves handle this via JS; these rules cover the rest. */
+html.low-res img[src*='images/classes/'],
+html.low-res img[src*='images/skills/'],
+html.low-res img[src*='images/cz/'] {
+    display: none;
+}
+
+html.low-res .previewSprite {
+    display: none;
+}
+
 /* Phone: keep headings readable without dominating the small viewport. */
 @media (max-width: 700px) {
     html h1 {

@@ -6,6 +6,8 @@ import React from 'react';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 import { useHideLore } from './hideLoreContext';
 import { useHideObtainment } from './hideObtainmentContext';
+import { useBuildList } from './buildListContext';
+import { useBuildListEnabled } from './buildListEnabledContext';
 
 const MAX_FISH_QUALITY = 5;
 
@@ -50,6 +52,8 @@ export default function ConsumableTile(data) {
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
     const { hidden: hideObtainment } = useHideObtainment();
+    const { items: listItems, toggleItem } = useBuildList();
+    const { enabled: buildListEnabled } = useBuildListEnabled();
     let formattedEffects = ConsumableFormatter.formatEffects(item.effects);
 
     const [cssClass, setCssClass] = React.useState(getItemsheetClass(item.name));
@@ -89,6 +93,20 @@ export default function ConsumableTile(data) {
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
+            {buildListEnabled && (
+                <button
+                    type="button"
+                    className={`${styles.listAddButton}${listItems.includes(item.name) ? ` ${styles.listAddButtonOn}` : ''}`}
+                    onClick={() => toggleItem(item.name, item.type)}
+                    aria-label={
+                        listItems.includes(item.name)
+                            ? `Remove ${item.name} from build list`
+                            : `Add ${item.name} to build list`
+                    }
+                >
+                    {listItems.includes(item.name) ? '✓' : '+'}
+                </button>
+            )}
             <div className={styles.imageIcon}>
                 <div className={[baseBackgroundClass, cssClass].join(' ')}></div>
             </div>

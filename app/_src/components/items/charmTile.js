@@ -3,6 +3,8 @@ import CharmFormatter from '../../utils/items/charmFormatter';
 import TranslatableText from '../translatableText';
 import React from 'react';
 import { useLowResource } from '../lowResourceContext';
+import { useBuildList } from './buildListContext';
+import { useBuildListEnabled } from './buildListEnabledContext';
 import { useHideObtainment } from './hideObtainmentContext';
 import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/spritesheetMap';
 
@@ -76,6 +78,8 @@ export default function CharmTile(data) {
     const [spriteMap, setSpriteMap] = React.useState(null);
     const { lowRes } = useLowResource();
     const { hidden: hideObtainment } = useHideObtainment();
+    const { items: listItems, toggleItem } = useBuildList();
+    const { enabled: buildListEnabled } = useBuildListEnabled();
 
     let formattedCharm = CharmFormatter.formatCharm(item.stats);
 
@@ -118,6 +122,20 @@ export default function CharmTile(data) {
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
+            {buildListEnabled && (
+                <button
+                    type="button"
+                    className={`${styles.listAddButton}${listItems.includes(item.name) ? ` ${styles.listAddButtonOn}` : ''}`}
+                    onClick={() => toggleItem(item.name, item.type)}
+                    aria-label={
+                        listItems.includes(item.name)
+                            ? `Remove ${item.name} from build list`
+                            : `Add ${item.name} to build list`
+                    }
+                >
+                    {listItems.includes(item.name) ? '✓' : '+'}
+                </button>
+            )}
             <div className={styles.imageIcon}>
                 {lowRes ? (
                     <div className={styles.lowResIcon}></div>

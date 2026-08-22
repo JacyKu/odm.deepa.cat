@@ -7,6 +7,8 @@ import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
 import { useHideObtainment } from './hideObtainmentContext';
 import { useLowResource } from '../lowResourceContext';
+import { useBuildList } from './buildListContext';
+import { useBuildListEnabled } from './buildListEnabledContext';
 
 function camelCase(str, upper) {
     if (!str) return '';
@@ -54,6 +56,8 @@ export default function ItemTile(data) {
     const { hidden: hideLore } = useHideLore();
     const { hidden: hideObtainment } = useHideObtainment();
     const { lowRes } = useLowResource();
+    const { items: listItems, toggleItem } = useBuildList();
+    const { enabled: buildListEnabled } = useBuildListEnabled();
     const [cssClass, setCssClass] = React.useState(getItemsheetClass(item.name));
     const [baseBackgroundClass, setBaseBackgroundClass] = React.useState('monumenta-items');
     const [spriteMap, setSpriteMap] = React.useState(null);
@@ -99,6 +103,20 @@ export default function ItemTile(data) {
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
+            {buildListEnabled && (
+                <button
+                    type="button"
+                    className={`${styles.listAddButton}${listItems.includes(item.name) ? ` ${styles.listAddButtonOn}` : ''}`}
+                    onClick={() => toggleItem(item.name, item.type)}
+                    aria-label={
+                        listItems.includes(item.name)
+                            ? `Remove ${item.name} from build list`
+                            : `Add ${item.name} to build list`
+                    }
+                >
+                    {listItems.includes(item.name) ? '✓' : '+'}
+                </button>
+            )}
             <div className={styles.imageIcon}>
                 {lowRes ? (
                     <div className={styles.lowResIcon}></div>

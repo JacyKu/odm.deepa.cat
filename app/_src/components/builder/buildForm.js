@@ -66,6 +66,53 @@ const emptyBuild = {
 // the plain /builder page, or on /b/<id> when the draft belongs to that build.
 const DRAFT_KEY = 'sts.buildDraft.v1';
 
+// Build list (shopping list): items collected on the items page are read from
+// localStorage on mount and equipped into empty slots. Leftovers (misc items,
+// consumables, extra same-slot items) stay in the list for the next import.
+const BUILD_LIST_KEY = 'sts.buildList.v1';
+
+const MAINHAND_TYPES = new Set([
+    'mainhand',
+    'mainhand sword',
+    'mainhand shield',
+    'axe',
+    'pickaxe',
+    'wand',
+    'scythe',
+    'bow',
+    'crossbow',
+    'snowball',
+    'trident',
+    'alchemist bag',
+]);
+const OFFHAND_TYPES = new Set(['offhand', 'offhand shield', 'offhand sword']);
+const EQUIP_SLOTS = ['mainhand', 'offhand', 'helmet', 'chestplate', 'leggings', 'boots'];
+
+function resolveItemKey(itemData, displayName) {
+    if (itemData[displayName]) return displayName;
+    return Object.keys(itemData).find((key) => itemData[key].name === displayName) || null;
+}
+
+function readBuildList() {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = window.localStorage.getItem(BUILD_LIST_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+// The build list only imports when the "Item import" menu toggle is on.
+function isBuildListEnabled() {
+    if (typeof window === 'undefined') return false;
+    try {
+        return window.localStorage.getItem('buildListEnabled') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
 // Reorderable skill/ability lists: the custom order (a personal layout
 // preference) is stored in localStorage per class / specialization / tree.
 const ORDER_PREFIX = 'sts.order.';
@@ -297,6 +344,18 @@ function getRelevantItems(types, itemData) {
 function recalcBuild(data, itemData) {
     let tempStats = new Stats(itemData, data, enabledBoxes, extraStats, enabledClassAbilityBuffs);
     return tempStats;
+}
+
+// Run the (synchronous, heavy) stats recomputation as a low-priority update so
+// the interaction that triggered it (item select, checkbox, ...) paints and
+// responds immediately. The two state updates (local stats + parent item
+// display) are batched into a single transition render.
+function applyStatsUpdate(itemNames, itemData, setStats, update) {
+    React.startTransition(() => {
+        const tempStats = recalcBuild(itemNames, itemData);
+        setStats(tempStats);
+        update(tempStats);
+    });
 }
 
 function createMasterworkData(name, itemData) {
@@ -593,30 +652,75 @@ export default function BuildForm({
 
     // Drag-to-reorder of skill/ability lists. dragState drives styling; the
     // ref holds the in-flight drag so handlers never read stale state.
+    // dragTarget tracks which row the pointer is over (drop highlight).
     const [dragState, setDragState] = React.useState(null); // { container, key }
     const dragStateRef = React.useRef(null);
+    const [dragTarget, setDragTarget] = React.useState(null); // { container, key }
+    const dragTargetRef = React.useRef(null);
     const [orderVersion, setOrderVersion] = React.useState(0);
 
     function startSkillDrag(container, key, e) {
-        if (e.dataTransfer) e.dataTransfer.setData('text/plain', `${container}:${key}`);
+        if (e.dataTransfer) {
+            e.dataTransfer.setData('text/plain', `${container}:${key}`);
+            e.dataTransfer.effectAllowed = 'move';
+            // Custom drag image: a ghost copy of the whole row (the default
+            // is just the tiny handle, which feels unresponsive).
+            const handle = e.currentTarget;
+            const row = handle.closest(`.${styles.skillRow}`) || handle;
+            if (row) {
+                const ghost = row.cloneNode(true);
+                ghost.style.position = 'fixed';
+                ghost.style.left = '-9999px';
+                ghost.style.top = '-9999px';
+                ghost.style.width = `${row.offsetWidth}px`;
+                ghost.style.pointerEvents = 'none';
+                ghost.style.opacity = '0.85';
+                document.body.appendChild(ghost);
+                e.dataTransfer.setDragImage(ghost, 24, 18);
+                requestAnimationFrame(() => ghost.remove());
+            }
+        }
         dragStateRef.current = { container, key };
+        dragTargetRef.current = null;
         setDragState({ container, key });
+        setDragTarget(null);
     }
 
     function endSkillDrag() {
         dragStateRef.current = null;
+        dragTargetRef.current = null;
         setDragState(null);
+        setDragTarget(null);
     }
 
     // On drag-over a row in the same container, move the dragged item to that
     // row's slot and persist the new order (triggers a re-render via orderVersion).
     function skillDragOver(e, container, key, sortedList, keyOf) {
         const d = dragStateRef.current;
-        if (!d || d.container !== container || d.key === key) return;
+        if (!d || d.container !== container) return;
         e.preventDefault();
-        const next = moveInOrder(sortedList, keyOf, d.key, key);
-        writeOrder(container, next.map(keyOf));
-        setOrderVersion((v) => v + 1);
+        e.dataTransfer.dropEffect = 'move';
+        // Highlight the row currently under the pointer.
+        if (dragTargetRef.current?.key !== key) {
+            dragTargetRef.current = { container, key };
+            setDragTarget({ container, key });
+        }
+        if (d.key !== key) {
+            const next = moveInOrder(sortedList, keyOf, d.key, key);
+            writeOrder(container, next.map(keyOf));
+            setOrderVersion((v) => v + 1);
+        }
+        // Auto-scroll the page while hovering near its edges.
+        const MARGIN = 80;
+        if (e.clientY < MARGIN) window.scrollBy(0, -18);
+        else if (e.clientY > window.innerHeight - MARGIN) window.scrollBy(0, 18);
+    }
+
+    function skillDragLeave(key) {
+        if (dragTargetRef.current?.key === key) {
+            dragTargetRef.current = null;
+            setDragTarget(null);
+        }
     }
 
     function statInputChanged(name, event) {
@@ -629,9 +733,7 @@ export default function BuildForm({
         setRevelation(event.target.checked);
         // Native checkbox state is already in FormData at this point (see checkboxChanged).
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     function delveChanged(slot, option) {
@@ -651,9 +753,7 @@ export default function BuildForm({
             if (entries[i][0] == `delveInfusion-${slot}`) entries[i][1] = option ? option.value : 'None';
         }
         const itemNames = Object.fromEntries(entries);
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     function delveSlotSelects(slot) {
@@ -743,9 +843,7 @@ export default function BuildForm({
         }
         refreshClassBuffs(skillPoints, nextSpecPoints, nextEnhancements);
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     React.useEffect(() => {
@@ -816,9 +914,7 @@ export default function BuildForm({
 
     function recalcBuildStats() {
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     function skillPointClicked(skillId, pointIndex) {
@@ -1224,9 +1320,7 @@ export default function BuildForm({
     function sendUpdate(event) {
         event.preventDefault();
         const itemNames = Object.fromEntries(new FormData(event.target).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     React.useEffect(() => {
@@ -1448,17 +1542,17 @@ export default function BuildForm({
                 delveEntries[`delveInfusion-${slot}`] = infusion;
             }
 
-            const tempStats = recalcBuild(
+            applyStatsUpdate(
                 {
                     ...itemNames,
                     ...statValues,
                     ...delveEntries,
                     ...(loadedRevelation ? { revelation: '1' } : {}),
                 },
-                itemData
+                itemData,
+                setStats,
+                update
             );
-            setStats(tempStats);
-            update(tempStats);
 
             // Region gating: drop whatever the loaded region forbids (see regionChanged).
             const loadedRegion = Number(statValues.region) || 3;
@@ -1487,6 +1581,89 @@ export default function BuildForm({
                 }
             }
     }, [parentLoaded, draft]);
+
+    // Import the build list (items collected on the items page) into empty
+    // slots; charms append within the 12-power budget. Equipped items are
+    // removed from the list, leftovers (misc, consumables, extra same-slot
+    // items) stay for the next import.
+    React.useEffect(() => {
+        if (!parentLoaded) return;
+        if (!isBuildListEnabled()) return;
+        const list = readBuildList();
+        if (list.length === 0) return;
+
+        // Baseline = what the token/draft load will (or already did) put in
+        // the slots. Read it from the decoded token rather than the select
+        // refs: the restore effect's setValue() is an async react-select
+        // state update that hasn't flushed yet when this effect runs.
+        const isLoadedBuild = Boolean(build);
+        const effDraft = draft && (!isLoadedBuild || draft.buildId === buildId) ? draft : null;
+        const loadToken = effDraft ? effDraft.token : build;
+        const itemNames = { mainhand: 'None', offhand: 'None', helmet: 'None', chestplate: 'None', leggings: 'None', boots: 'None' };
+        if (loadToken) {
+            const decoded = decodeBuildParam(loadToken, itemData);
+            if (decoded) {
+                const buildParts = decodeURI(decoded).split('&');
+                for (const type of Object.keys(itemNames)) {
+                    const value = buildParts.find((str) => str.includes(`${type[0]}=`))?.split(`${type[0]}=`)[1];
+                    if (value && itemData[value]) itemNames[type] = value;
+                }
+            }
+        }
+        const equipped = new Set();
+        const charmsToAdd = [];
+        let addedPower = 0;
+
+        for (const entry of list) {
+            const displayName = typeof entry === 'string' ? entry : entry.name;
+            const key = resolveItemKey(itemData, displayName);
+            if (!key) continue;
+            const info = itemData[key];
+            const type = String(info.type || '').toLowerCase();
+            const slot = MAINHAND_TYPES.has(type)
+                ? 'mainhand'
+                : OFFHAND_TYPES.has(type)
+                  ? 'offhand'
+                  : EQUIP_SLOTS.includes(type)
+                    ? type
+                    : null;
+            if (slot && itemNames[slot] === 'None') {
+                itemNames[slot] = key;
+                itemRefs[slot].current.setValue({ value: key, label: removeMasterworkFromName(key) });
+                equipped.add(displayName);
+            } else if (type === 'charm' && info.power && addedPower + info.power <= 12) {
+                addedPower += info.power;
+                charmsToAdd.push(info);
+                equipped.add(displayName);
+            }
+        }
+
+        if (equipped.size > 0) {
+            if (charmsToAdd.length > 0) {
+                setCharms((current) => {
+                    let budget = 12 - current.reduce((sum, c) => sum + (c.power || 0), 0);
+                    const next = [...current];
+                    for (const charm of charmsToAdd) {
+                        if (charm.power && charm.power <= budget) {
+                            next.push(charm);
+                            budget -= charm.power;
+                        }
+                    }
+                    return next;
+                });
+            }
+            applyStatsUpdate(itemNames, itemData, setStats, update);
+            const leftovers = list.filter((entry) => {
+                const name = typeof entry === 'string' ? entry : entry.name;
+                return !equipped.has(name);
+            });
+            try {
+                if (leftovers.length === 0) window.localStorage.removeItem(BUILD_LIST_KEY);
+                else window.localStorage.setItem(BUILD_LIST_KEY, JSON.stringify(leftovers));
+            } catch (e) {}
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [parentLoaded]);
 
     // Autosave the working state as a session draft (debounced) so an
     // accidental reload or a switch to another page doesn't lose it. The load
@@ -1599,9 +1776,7 @@ export default function BuildForm({
             extraStats[key] = [];
         }
         setMultiplierListKey((k) => k + 1);
-        const tempStats = recalcBuild(emptyBuild, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(emptyBuild, itemData, setStats, update);
     }
 
     function receiveMasterworkUpdate(newActiveItem, itemType) {
@@ -1636,9 +1811,7 @@ export default function BuildForm({
             label: newActiveItem.name,
         });
 
-        const tempStats = recalcBuild(newBuild, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(newBuild, itemData, setStats, update);
     }
 
     function getEquipName(type) {
@@ -1747,9 +1920,7 @@ export default function BuildForm({
             event.target.checked = temp;
         }
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     function getCheckboxRef(form, name) {
@@ -1763,9 +1934,7 @@ export default function BuildForm({
     function multipliersChanged(newMultipliers, name) {
         extraStats[name] = newMultipliers;
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     function damageMultipliersChanged(newMultipliers) {
@@ -1819,9 +1988,7 @@ export default function BuildForm({
             if (entries[i][0] == actionMeta.name) entries[i][1] = newValue.value;
         }
         const itemNames = Object.fromEntries(entries);
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     function classChanged(newValue, actionMeta) {
@@ -1836,9 +2003,7 @@ export default function BuildForm({
         refreshClassBuffs({}, {}, {});
         // and then recalculate... zzz
         const itemNames = Object.fromEntries(new FormData(formRef.current).entries());
-        const tempStats = recalcBuild(itemNames, itemData);
-        setStats(tempStats);
-        update(tempStats);
+        applyStatsUpdate(itemNames, itemData, setStats, update);
     }
 
     const miscStats = [
@@ -2196,10 +2361,14 @@ export default function BuildForm({
                                             dragState &&
                                             dragState.container === classOrderContainer &&
                                             dragState.key === skill.scoreboardId;
+                                        const over =
+                                            dragTarget &&
+                                            dragTarget.container === classOrderContainer &&
+                                            dragTarget.key === skill.scoreboardId;
                                         return (
                                             <div
                                                 key={skill.scoreboardId}
-                                                className={`${styles.skillRow} ${dragging ? styles.skillDragging : ''}`}
+                                                className={`${styles.skillRow} ${dragging ? styles.skillDragging : ''}${over ? ` ${styles.skillDragOver}` : ''}`}
                                                 title={tooltip}
                                                 onDragOver={(e) =>
                                                     classOrderContainer &&
@@ -2211,6 +2380,7 @@ export default function BuildForm({
                                                         (s) => s.scoreboardId
                                                     )
                                                 }
+                                                onDragLeave={() => skillDragLeave(skill.scoreboardId)}
                                                 onDrop={(e) => {
                                                     e.preventDefault();
                                                     endSkillDrag();
@@ -2316,10 +2486,14 @@ export default function BuildForm({
                                         dragState &&
                                         dragState.container === specOrderContainer &&
                                         dragState.key === skill.scoreboardId;
+                                    const over =
+                                        dragTarget &&
+                                        dragTarget.container === specOrderContainer &&
+                                        dragTarget.key === skill.scoreboardId;
                                     return (
                                         <div
                                             key={skill.scoreboardId}
-                                            className={`${styles.skillRow} ${dragging ? styles.skillDragging : ''}`}
+                                            className={`${styles.skillRow} ${dragging ? styles.skillDragging : ''}${over ? ` ${styles.skillDragOver}` : ''}`}
                                             title={tooltip}
                                             onDragOver={(e) =>
                                                 specOrderContainer &&
@@ -2331,6 +2505,7 @@ export default function BuildForm({
                                                     (s) => s.scoreboardId
                                                 )
                                             }
+                                            onDragLeave={() => skillDragLeave(skill.scoreboardId)}
                                             onDrop={(e) => {
                                                 e.preventDefault();
                                                 endSkillDrag();
@@ -2408,10 +2583,6 @@ export default function BuildForm({
                                         </>
                                     )}
                                 </span>
-                                <span className={styles.skillTotal}>
-                                    Class skills are disabled in {regionValue === 2 ? 'the Depths' : 'Celestial Zenith'}
-                                    .
-                                </span>
                                 <button type="button" className={styles.skillActionButton} onClick={clearCz}>
                                     Clear all
                                 </button>
@@ -2456,12 +2627,18 @@ export default function BuildForm({
                                                 dragState &&
                                                 dragState.container === czOrderContainer &&
                                                 dragState.key === ability.name;
+                                            const over =
+                                                dragTarget &&
+                                                dragTarget.container === czOrderContainer &&
+                                                dragTarget.key === ability.name;
                                             return (
                                                 <div
                                                     key={ability.name}
                                                     className={`${styles.czSkillRow}${
                                                         triggerTaken && !selected ? ` ${styles.czDisabled}` : ''
-                                                    }${dragging ? ` ${styles.skillDragging}` : ''}`}
+                                                    }${dragging ? ` ${styles.skillDragging}` : ''}${
+                                                        over ? ` ${styles.skillDragOver}` : ''
+                                                    }`}
                                                     title={tooltip}
                                                     onDragOver={(e) =>
                                                         czOrderContainer &&
@@ -2473,6 +2650,7 @@ export default function BuildForm({
                                                             (a) => a.name
                                                         )
                                                     }
+                                                    onDragLeave={() => skillDragLeave(ability.name)}
                                                     onDrop={(e) => {
                                                         e.preventDefault();
                                                         endSkillDrag();

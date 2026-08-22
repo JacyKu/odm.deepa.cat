@@ -5,6 +5,7 @@ import ItemTile from './items/itemTile';
 import MasterworkableItemTile from './items/masterworkableItemTile';
 import CharmTile from './items/charmTile';
 import ConsumableTile from './items/consumableTile';
+import BuildListPanel from './items/buildListPanel';
 import SearchForm from './items/searchForm';
 import React from 'react';
 import InfiniteScroll from './infiniteScroll';
@@ -408,6 +409,7 @@ export default function ItemsPage({ itemData }) {
             <main className={styles.main}>
                 <h1>Monumenta Items</h1>
                 <SearchForm update={handleChange} itemData={itemData}></SearchForm>
+                <BuildListPanel></BuildListPanel>
                 <h4 className={styles.resultCount}>
                     <TranslatableText identifier="items.searchForm.itemsFound"></TranslatableText>{' '}
                     {relevantItems.length}

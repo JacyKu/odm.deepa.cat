@@ -7,6 +7,7 @@ import LoreToggle from './items/loreToggle';
 import ObtainmentToggle from './items/obtainmentToggle';
 import HideSkinsToggle from './items/hideSkinsToggle';
 import MaxMasterworkToggle from './items/maxMasterworkToggle';
+import BuildListToggle from './items/buildListToggle';
 import styles from '../styles/Header.module.css';
 import Link from 'next/link';
 import { getStsBase } from '../utils/base';
@@ -253,6 +254,7 @@ export default function Header() {
                 <ObtainmentToggle className={styles.loreToggle} />
                 <HideSkinsToggle className={styles.loreToggle} />
                 <MaxMasterworkToggle className={styles.loreToggle} />
+                <BuildListToggle className={styles.loreToggle} />
                 <HeaderSelect
                     instanceId="font"
                     options={fontOptions}
