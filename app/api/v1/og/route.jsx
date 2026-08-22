@@ -385,14 +385,16 @@ export async function GET(request) {
                   if (key === 'None')
                       return { label, name: null, key: null, img: null, ex: false, tier: null, masterwork: 0 };
                   const item = itemData[key];
-                  const name = item?.name || key;
-                  const img = await itemSpriteDataUrl(spriteInfo, key, name, item?.base_item);
+                  const rawName = item?.name || key;
+                  const ex = Boolean(rawName?.startsWith('EX '));
+                  const name = ex ? rawName.replace(/^EX\s+/, '') : rawName;
+                  const img = await itemSpriteDataUrl(spriteInfo, key, rawName, item?.base_item);
                   return {
                       label,
                       name,
                       key,
                       img,
-                      ex: Boolean(item?.name?.startsWith('EX ')),
+                      ex,
                       tier: item?.tier || null,
                       masterwork: item && item.masterwork != null ? item.masterwork : null,
                   };

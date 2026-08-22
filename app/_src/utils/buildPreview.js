@@ -185,7 +185,9 @@ export function getLinkPreviewDescription(build, itemData, skillsData, infusions
     const formatItem = (itemKey) => {
         if (!itemKey || itemKey === 'None') return 'None';
         const displayName = itemData?.[itemKey]?.name || itemKey;
-        return displayName;
+        // The card image already marks EX items with a purple tag, so the
+        // text description must not repeat the prefix.
+        return displayName.replace(/^EX\s+/, '');
     };
 
     const charmInline =
