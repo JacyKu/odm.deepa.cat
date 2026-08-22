@@ -4,6 +4,7 @@ import { LanguageContextProvider } from './_src/components/languageContext';
 import { LowResourceProvider } from './_src/components/lowResourceContext';
 import { HideLoreProvider } from './_src/components/items/hideLoreContext';
 import { HideObtainmentProvider } from './_src/components/items/hideObtainmentContext';
+import { MaxMasterworkProvider } from './_src/components/items/maxMasterworkContext';
 import Header, { HeaderNav } from './_src/components/header';
 import Footer from './_src/components/footer';
 import SiteNav from '@deepa/shared/site-nav';
@@ -61,11 +62,13 @@ export default async function StsLayout({ children }) {
                         <LanguageContextProvider>
                             <HideLoreProvider>
                                 <HideObtainmentProvider>
-                                    <SiteNav showBeta center={<HeaderNav />}>
-                                        <Header />
-                                    </SiteNav>
-                                    <div className="site-main">{children}</div>
-                                    <Footer />
+                                    <MaxMasterworkProvider>
+                                        <SiteNav showBeta center={<HeaderNav />}>
+                                            <Header />
+                                        </SiteNav>
+                                        <div className="site-main">{children}</div>
+                                        <Footer />
+                                    </MaxMasterworkProvider>
                                 </HideObtainmentProvider>
                             </HideLoreProvider>
                         </LanguageContextProvider>

@@ -6,6 +6,7 @@ import { loadItemSpriteMap, getMappedSpriteClass } from '../../utils/items/sprit
 import { getMinecraftTextureKey } from '../../utils/items/minecraftFallback';
 import { useHideLore } from './hideLoreContext';
 import { useHideObtainment } from './hideObtainmentContext';
+import { useMaxMasterwork } from './maxMasterworkContext';
 import { useLowResource } from '../lowResourceContext';
 
 function camelCase(str, upper) {
@@ -131,6 +132,7 @@ export default function MasterworkableItemTile(data) {
     const item = data.item;
     const { hidden: hideLore } = useHideLore();
     const { hidden: hideObtainment } = useHideObtainment();
+    const { enabled: maxMasterworkDefault } = useMaxMasterwork();
     const { lowRes } = useLowResource();
 
     // If the item name has accented characters, they are actually not present in the item's name property,
@@ -141,16 +143,29 @@ export default function MasterworkableItemTile(data) {
         }
     }
 
-    let defaultItem;
-    if (data.default) {
-        defaultItem = getItemWithMasterwork(item, data.default, data.itemData, data.name);
-    } else {
-        defaultItem = getLowestMasterworkItem(item);
+    // The "Max masterwork" menu toggle makes every masterworkable item open on
+    // its highest available variant instead of the lowest.
+    function computeDefaultItem() {
+        if (data.default) {
+            return getItemWithMasterwork(item, data.default, data.itemData, data.name);
+        }
+        if (maxMasterworkDefault) {
+            const highest = Math.max(0, ...item.map((i) => Number(i.masterwork) || 0));
+            return getItemWithMasterwork(item, highest, data.itemData, data.name);
+        }
+        return getLowestMasterworkItem(item);
     }
-    const [activeItem, setActiveItem] = React.useState(defaultItem);
+    const [activeItem, setActiveItem] = React.useState(computeDefaultItem);
     const [cssClass, setCssClass] = React.useState(getItemsheetClass(activeItem.name));
     const [baseBackgroundClass, setBaseBackgroundClass] = React.useState('monumenta-items');
     const [spriteMap, setSpriteMap] = React.useState(null);
+
+    // When the menu toggle flips, reset every tile to the newly applicable
+    // default variant.
+    React.useEffect(() => {
+        setActiveItem(computeDefaultItem());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [maxMasterworkDefault]);
 
     function spanClicked(event) {
         let masterworkClicked = Number(event.target.id.split('-')[1]);
