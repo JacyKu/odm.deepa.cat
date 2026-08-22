@@ -700,20 +700,24 @@ export default function BuildForm({
         setRegionValue(nextRegion);
         setCzOpen(raw === 'dd' || raw === 'cz');
 
-        // Region gating: Valley (1) has no specializations at all; Valley and
-        // Isles (1-2) have no enhancements or charms. Depths abilities only
-        // exist in Darkest Depths (Isles) and Celestial Zenith (Ring).
+        // Region gating: Valley (1) has no specializations at all; neither do
+        // the CZ/DD variants. Valley and Isles (1-2) have no enhancements or
+        // charms. Depths abilities only exist in Darkest Depths (Isles) and
+        // Celestial Zenith (Ring).
         let nextSpec = spec;
         let nextSpecPoints = specSkillPoints;
         let nextEnhancements = enhancements;
         let nextCharms = charms;
         let nextCz = czAbilities;
-        if (nextRegion === 1) {
+        const isCzDd = raw === 'dd' || raw === 'cz';
+        if (nextRegion === 1 || isCzDd) {
             nextSpec = null;
             nextSpecPoints = {};
             setSpec(null);
             setSpecSelectKey((k) => k + 1);
             setSpecSkillPoints({});
+        }
+        if (nextRegion === 1) {
             nextCz = {};
             setCzAbilities({});
             setCzOpen(false);
