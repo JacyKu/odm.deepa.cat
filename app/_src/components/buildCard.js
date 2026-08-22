@@ -4,10 +4,92 @@ import React from 'react';
 import Link from 'next/link';
 import TranslatableText from './translatableText';
 import styles from '../styles/Database.module.css';
+import itemsStyles from '../styles/Items.module.css';
+import { loadItemSpriteMap, getMappedSpriteClass } from '../utils/items/spritesheetMap';
+import { getMinecraftTextureKey } from '../utils/items/minecraftFallback';
+import Enchants from './items/enchants';
+import CharmFormatter from '../utils/items/charmFormatter';
+
+// Per-build-item detail lookup cache, shared across cards.
+const itemDetailCache = new Map();
 
 // One build card in the public database / favourites grid.
 export default function BuildCard({ build, user, base, onToggleFavourite }) {
     const [favBusy, setFavBusy] = React.useState(false);
+    const [expanded, setExpanded] = React.useState(false);
+    const [sideOpen, setSideOpen] = React.useState(false);
+    const [side, setSide] = React.useState('right');
+    const [spriteMap, setSpriteMap] = React.useState(null);
+    const [openItem, setOpenItem] = React.useState(null);
+    const [detail, setDetail] = React.useState(null);
+    const hoverTimer = React.useRef(null);
+    const cardRef = React.useRef(null);
+
+    React.useEffect(() => {
+        let active = true;
+        loadItemSpriteMap().then((map) => {
+            if (active) setSpriteMap(map);
+        });
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    // Animate the side panel in on the frame after it mounts.
+    React.useEffect(() => {
+        if (!expanded) return;
+        const id = requestAnimationFrame(() => setSideOpen(true));
+        return () => {
+            cancelAnimationFrame(id);
+            setSideOpen(false);
+        };
+    }, [expanded]);
+
+    function onCardEnter() {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
+        hoverTimer.current = setTimeout(() => {
+            const rect = cardRef.current?.getBoundingClientRect();
+            setSide(rect && rect.right + 340 > window.innerWidth - 8 ? 'left' : 'right');
+            setExpanded(true);
+        }, 400);
+    }
+
+    function onCardLeave() {
+        if (hoverTimer.current) clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+        setExpanded(false);
+        setOpenItem(null);
+        setDetail(null);
+    }
+
+    function onRowClick(i, item) {
+        if (openItem === i) {
+            setOpenItem(null);
+            setDetail(null);
+            return;
+        }
+        setOpenItem(i);
+        const cacheKey = `${item.n}|${item.pw || ''}`;
+        const cached = itemDetailCache.get(cacheKey);
+        if (cached) {
+            setDetail(cached);
+            return;
+        }
+        const query = new URLSearchParams({ name: item.n });
+        if (item.c) {
+            query.set('type', 'charm');
+            query.set('power', String(item.pw || ''));
+        }
+        fetch(`/api/v1/items?${query}`)
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((data) => {
+                if (data.item) {
+                    itemDetailCache.set(cacheKey, data.item);
+                    setDetail(data.item);
+                }
+            })
+            .catch(() => {});
+    }
 
     function avatarUrl(id, avatar) {
         if (!id || !avatar) return null;
@@ -82,8 +164,100 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
             .replace(/ /g, '_')
             .replace(/'/g, '')}.png`;
 
+    let items = [];
+    if (build.itemsJson || build.items_json) {
+        try {
+            const parsed = JSON.parse(build.itemsJson || build.items_json);
+            items = (Array.isArray(parsed) ? parsed : []).map((s) =>
+                typeof s === 'string' ? { n: s } : s
+            );
+        } catch (e) {
+            items = [];
+        }
+    }
+
+    // Sprite class resolution mirrors the items page: explicit map entry, else
+    // a minecraft texture keyed by the base item. Charms fall back to their
+    // class default texture on the charmsheet (tier/class/power based), like
+    // charmTile does. Before the map has loaded, render a plain placeholder.
+    const SLOT_LABELS = {
+        mainhand: 'Mainhand',
+        offhand: 'Offhand',
+        helmet: 'Helmet',
+        chestplate: 'Chestplate',
+        leggings: 'Leggings',
+        boots: 'Boots',
+    };
+    function doesStyleExist(className) {
+        try {
+            for (const sheet of document.styleSheets) {
+                let rules;
+                try {
+                    rules = sheet.cssRules;
+                } catch (e) {
+                    continue;
+                }
+                if (!rules) continue;
+                for (const rule of rules) {
+                    if (rule.selectorText === `.${className}`) return true;
+                }
+            }
+        } catch (e) {
+            return false;
+        }
+        return false;
+    }
+    function charmDefaultClass(item) {
+        const tier = item.t || 'Base';
+        const cls = item.c || 'Generalist';
+        const power = item.pw || 1;
+        let image;
+        if (tier === 'Epic') {
+            image = `Epic-Charm-${power}`;
+        } else {
+            const prefix =
+                cls === 'Alchemist' ? 'Alch' : cls === 'Generalist' ? 'Gen' : cls;
+            image = `${prefix}-Charm${tier === 'Base' ? '' : `-${tier}`}-${power}`;
+        }
+        return `monumenta-${image}`;
+    }
+    function itemSprite(item) {
+        const mapped = getMappedSpriteClass(spriteMap, item.n);
+        if (mapped && doesStyleExist(mapped)) return `monumenta-items ${mapped}`;
+        if (spriteMap) {
+            if (item.c) {
+                const named = `monumenta-${item.n
+                    .replaceAll(' ', '-')
+                    .replaceAll('_', '-')
+                    .replaceAll("'", '')
+                    .trim()}`;
+                if (doesStyleExist(named)) return `monumenta-charms ${named}`;
+                return `monumenta-charms ${charmDefaultClass(item)}`;
+            }
+            return `minecraft minecraft-${getMinecraftTextureKey(item.b)}`;
+        }
+        return null;
+    }
+    const itemStars = (item) => {
+        if (item.c) {
+            return (Number(item.pw) || 0) > 0 ? (
+                <span className={styles.previewStars}>{'★'.repeat(Number(item.pw) || 0)}</span>
+            ) : null;
+        }
+        if (item.sl && SLOT_LABELS[item.sl]) {
+            return <span className={styles.previewSlot}>{SLOT_LABELS[item.sl]}</span>;
+        }
+        return null;
+    };
+
     return (
-        <Link href={base + build.url} className={styles.card}>
+        <Link
+            ref={cardRef}
+            href={base + build.url}
+            className={`${styles.card}${expanded ? ` ${styles.cardExpanded}` : ''}`}
+            onMouseEnter={onCardEnter}
+            onMouseLeave={onCardLeave}
+        >
             <div className={styles.cardTop}>
                 <div className={styles.cardTitle} title={displayName}>
                     {displayName}
@@ -141,9 +315,6 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
                 )}
                 {!build.class && build.spec && <span className={styles.tag}>{build.spec}</span>}
                 {build.region && <span className={styles.tag}>{build.region}</span>}
-                {build.masterworkCount > 0 && (
-                    <span className={styles.tag}>✦ {build.masterworkCount}</span>
-                )}
                 {build.tree && (
                     <span className={styles.classTag}>
                         <img
@@ -166,8 +337,7 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
                     {skills.map((s, i) => (
                         <span
                             key={i}
-                            className={styles.skillChip}
-                            title={s.g === 'c' ? `${s.f} · ${CZ_RARITY_NAMES[s.r] || ''}`.trim() : s.f}
+                            className={`${styles.skillChip} ${itemsStyles.enchantTooltip}`}
                             style={{ color: skillColor(s) }}
                         >
                             {s.g === 'c' ? (
@@ -200,6 +370,11 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
                                     {s.e ? '*' : ''}
                                 </span>
                             )}
+                            <span className={itemsStyles.enchantTooltipText}>
+                                {s.g === 'c'
+                                    ? `${s.f} · ${CZ_RARITY_NAMES[s.r] || ''}`.trim()
+                                    : s.f}
+                            </span>
                         </span>
                     ))}
                 </div>
@@ -220,6 +395,79 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
                     {new Date((build.updatedAt || build.createdAt) + 'Z').toLocaleDateString()}
                 </span>
             </div>
+
+            {expanded && items.length > 0 && (
+                <div
+                    className={`${styles.cardSide} ${side === 'left' ? styles.cardSideLeft : styles.cardSideRight}${sideOpen ? ` ${styles.cardSideOpen}` : ''}`}
+                >
+                    {items.map((item, i) => {
+                        const cls = itemSprite(item);
+                        return (
+                            <div
+                                key={i}
+                                className={styles.previewRowWrap}
+                                style={{ animationDelay: `${i * 30}ms` }}
+                            >
+                                <div
+                                    className={`${styles.previewRow}${openItem === i ? ` ${styles.previewRowOpen}` : ''}`}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onRowClick(i, item);
+                                    }}
+                                >
+                                    <span className={styles.previewIcon}>
+                                        {cls ? (
+                                            <span
+                                                className={`${styles.previewSprite} ${cls}`}
+                                                aria-hidden="true"
+                                            />
+                                        ) : null}
+                                    </span>
+                                    <span className={styles.previewInfo}>
+                                        <span className={styles.previewName}>{item.n}</span>
+                                        {itemStars(item)}
+                                    </span>
+                                </div>
+                                {openItem === i && detail && (
+                                    <div className={styles.itemDetail}>
+                                        <div className={styles.itemDetailName}>
+                                            {detail.name || item.n}
+                                        </div>
+                                        <div className={styles.itemDetailInfo}>
+                                            {detail.type ? detail.type.replace('<M>', '') : ''}
+                                            {detail.type && detail.base_item ? ' - ' : ''}
+                                            {detail.base_item || ''}
+                                        </div>
+                                        {detail.type === 'Charm' ? (
+                                            <>
+                                                <div className={styles.itemDetailInfo}>
+                                                    <span className={styles.previewStars}>
+                                                        {'★'.repeat(Number(item.pw) || 0)}
+                                                    </span>
+                                                    {detail.class_name
+                                                        ? ` - ${detail.class_name}`
+                                                        : ''}
+                                                </div>
+                                                {CharmFormatter.formatCharm(detail.stats)}
+                                            </>
+                                        ) : (
+                                            <Enchants item={detail} />
+                                        )}
+                                        <div className={styles.itemDetailInfo}>
+                                            {detail.region ? `${detail.region} ` : ''}
+                                            {detail.tier || ''}
+                                        </div>
+                                        <div className={styles.itemDetailInfo}>
+                                            {detail.location || ''}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </Link>
     );
 }

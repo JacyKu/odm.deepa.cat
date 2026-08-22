@@ -16,6 +16,8 @@ function parseCharmPreview(charmValue, itemData) {
                 return {
                     name: c.name,
                     power: Number.isFinite(power) ? power : null,
+                    tier: c.tier || null,
+                    class_name: c.class_name || null,
                 };
             });
 

@@ -1,15 +1,27 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { getItemData } from '../../../_src/utils/itemsData';
 
-export async function GET() {
-    try {
-        const filePath = path.join(process.cwd(), 'public', 'items', 'items.json');
-        const raw = await fs.readFile(filePath, 'utf8');
-        return new NextResponse(raw, {
-            headers: { 'Content-Type': 'application/json' },
-        });
-    } catch (e) {
-        return NextResponse.json({ error: 'Unable to read items.json' }, { status: 500 });
+// Single-item lookup for the build-card hover preview:
+//   /api/v1/items?name=...&type=charm&power=3
+export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+    const name = searchParams.get('name');
+    const type = searchParams.get('type');
+    const power = searchParams.get('power');
+    if (!name) {
+        return NextResponse.json({ error: 'missing name' }, { status: 400 });
     }
+
+    const itemData = await getItemData();
+    let item = null;
+    if (type === 'charm') {
+        const wantedPower = power != null ? Number(power) : null;
+        item =
+            Object.values(itemData).find(
+                (i) => i.name === name && i.type === 'Charm' && (wantedPower == null || Number(i.power) === wantedPower)
+            ) || null;
+    } else {
+        item = itemData[name] || Object.values(itemData).find((i) => i.name === name) || null;
+    }
+    return NextResponse.json({ item });
 }
