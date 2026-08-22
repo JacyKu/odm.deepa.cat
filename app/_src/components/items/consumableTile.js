@@ -93,7 +93,7 @@ export default function ConsumableTile(data) {
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
-            {buildListEnabled && (
+            {buildListEnabled && data.showListButton && (
                 <button
                     type="button"
                     className={`${styles.listAddButton}${listItems.includes(item.name) ? ` ${styles.listAddButtonOn}` : ''}`}

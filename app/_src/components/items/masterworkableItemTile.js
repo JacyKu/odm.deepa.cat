@@ -238,7 +238,7 @@ export default function MasterworkableItemTile(data) {
 
     return (
         <div className={`${styles.itemTile} ${data.hidden ? styles.hidden : ''}`}>
-            {buildListEnabled && (
+            {buildListEnabled && data.showListButton && (
                 <button
                     type="button"
                     className={`${styles.listAddButton}${listItems.includes(data.name) ? ` ${styles.listAddButtonOn}` : ''}`}

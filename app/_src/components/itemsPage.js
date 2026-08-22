@@ -436,18 +436,38 @@ export default function ItemsPage({ itemData }) {
                                         name={name[0].name}
                                         item={name}
                                         itemData={itemData}
+                                        showListButton
                                     ></MasterworkableItemTile>
                                 );
                             }
                             if (itemData[name].type == 'Charm') {
                                 return (
-                                    <CharmTile key={name} name={itemData[name].name} item={itemData[name]}></CharmTile>
+                                    <CharmTile
+                                        key={name}
+                                        name={itemData[name].name}
+                                        item={itemData[name]}
+                                        showListButton
+                                    ></CharmTile>
                                 );
                             }
                             if (itemData[name].type == 'Consumable' && itemData[name].effects != undefined) {
-                                return <ConsumableTile key={name} name={name} item={itemData[name]}></ConsumableTile>;
+                                return (
+                                    <ConsumableTile
+                                        key={name}
+                                        name={name}
+                                        item={itemData[name]}
+                                        showListButton
+                                    ></ConsumableTile>
+                                );
                             }
-                            return <ItemTile key={name} name={name} item={itemData[name]}></ItemTile>;
+                            return (
+                                <ItemTile
+                                    key={name}
+                                    name={name}
+                                    item={itemData[name]}
+                                    showListButton
+                                ></ItemTile>
+                            );
                         })}
                     </InfiniteScroll>
                 )}

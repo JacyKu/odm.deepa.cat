@@ -195,9 +195,7 @@ export function getLinkPreviewDescription(build, itemData, skillsData, infusions
             ? '🧿 Charms: None'
             : `🧿 Charms (${data.charms.totalPower}★): ${data.charms.items
                   .map((charm) => (charm.power != null ? `${charm.name} ${charm.power}★` : charm.name))
-                  .join(', ')}`;
-
-    // The card image already shows class/spec/skills; the text keeps only gear + charms.
+                  .join(', ')}`;    // The card image already shows class/spec/skills; the text keeps only gear + charms.
     const EMOJI = {
         mainhand: '⚔️',
         offhand: '🛡️',
@@ -214,8 +212,12 @@ export function getLinkPreviewDescription(build, itemData, skillsData, infusions
         `${EMOJI.chestplate} ${formatItem(i.chestplate)}`,
         `${EMOJI.leggings} ${formatItem(i.leggings)}`,
         `${EMOJI.boots} ${formatItem(i.boots)}`,
-        charmInline,
     ];
+
+    // Valley (1) and Isles (2) — including Darkest Depths — have no charms.
+    if (data.region > 2) {
+        parts.push(charmInline);
+    }
 
     if (data.czAbilities.length > 0) {
         const rarityLabel = (r) => ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Twisted'][r] || '';
