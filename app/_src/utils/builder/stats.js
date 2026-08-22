@@ -815,13 +815,18 @@ class Stats {
             if (this.enabledClassAbilityBuffs.toughness_enhancement) toughnessBonus += 5;
             toughnessMultiplier = 1 + toughnessBonus / 100;
         }
-        // Calculate final health
-        this.healthFinal =
+        // Calculate final health. Max health is hard-stopped at 1 point: flat
+        // penalties can push the base towards zero, and multipliers would then
+        // carry the result below the game's minimum, so clamp after the full
+        // product rather than on any single factor.
+        this.healthFinal = Math.max(
+            1,
             this.healthFlat *
-            this.healthPercent.val *
-            (1 + 0.01 * Number(this.vitality)) *
-            toughnessMultiplier *
-            this.extraHealthMultiplier;
+                this.healthPercent.val *
+                (1 + 0.01 * Number(this.vitality)) *
+                toughnessMultiplier *
+                this.extraHealthMultiplier
+        );
         // Current health (percentage of max health based on player input)
         this.currentHealth = this.healthFinal * this.currentHealthPercent.val;
         // Fix speed percentage to account for base speed
