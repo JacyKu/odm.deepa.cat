@@ -9,6 +9,35 @@ import SearchForm from './items/searchForm';
 import React from 'react';
 import InfiniteScroll from './infiniteScroll';
 import TranslatableText from './translatableText';
+import { useHideSkins } from './items/hideSkinsContext';
+import skinNames from '../data/skins.json';
+
+// Skin variants confirmed from the Monumenta wiki "Skins" sections.
+const SKIN_NAMES = new Set(skinNames);
+
+// Items whose location marks them as skin variants.
+const SKIN_LOCATIONS = new Set([
+    'Abyssalskin',
+    'Storied Skin',
+    'Eternity Skin',
+    'Sketched',
+    'Halloween Skin',
+    'Holiday Skin',
+    'Threadwarped Skin',
+    'Divine Skin',
+    'Greed Skin',
+    'Mythic Reliquary',
+    'Titanic Skin',
+    'Remorseful Skin',
+    'Challenger',
+]);
+
+// Skinned items whose location looks ordinary (checked against the wiki).
+const SKIN_EXCEPTIONS = new Set([
+    'Phantasm',
+    "Refit King's Crown",
+    'Sacrificial Dagger',
+]);
 
 function extractFilterValues(data, baseKey) {
     return Object.keys(data)
@@ -84,9 +113,24 @@ function getCharmAbilityTextMap(itemData) {
     return map;
 }
 
-function getRelevantItems(data, itemData) {
+function getRelevantItems(data, itemData, hideSkins) {
     let items = Object.keys(itemData);
     items = items.filter((name) => itemData[name].base_item != 'Written Book');
+
+    // "Hide skinned items": drop skin variants by wiki-confirmed name
+    // (skins.json), skin-marked location, or known exception items.
+    if (hideSkins) {
+        items = items.filter((name) => {
+            const item = itemData[name];
+            if (SKIN_NAMES.has(item.name)) return false;
+            if (SKIN_LOCATIONS.has(item.location)) return false;
+            if (SKIN_EXCEPTIONS.has(item.name)) return false;
+            // Royal Armory: the Queen's items (and Refit King's Crown) are the
+            // skins; the King's items are the base.
+            if (item.name.startsWith('Queen') && item.location === 'Royal Armory') return false;
+            return true;
+        });
+    }
 
     if (data.searchName) {
         // Check if the user inputted any "|" to search for multiple item names at once.
@@ -338,12 +382,20 @@ function getRelevantItems(data, itemData) {
 }
 
 export default function ItemsPage({ itemData }) {
-    const [relevantItems, setRelevantItems] = React.useState(() => getRelevantItems({}, itemData));
+    const { hidden: hideSkins } = useHideSkins();
+    const [relevantItems, setRelevantItems] = React.useState(() => getRelevantItems({}, itemData, false));
     const [itemsToShow, setItemsToShow] = React.useState(20);
     const itemsToLoad = 20;
 
+    // Re-apply the list when the hide-skins toggle flips.
+    React.useEffect(() => {
+        setRelevantItems((prev) =>
+            prev.length > 0 && !hideSkins ? prev : getRelevantItems({}, itemData, hideSkins)
+        );
+    }, [hideSkins, itemData]);
+
     function handleChange(data) {
-        setRelevantItems(getRelevantItems(data, itemData));
+        setRelevantItems(getRelevantItems(data, itemData, hideSkins));
         setItemsToShow(itemsToLoad);
     }
 

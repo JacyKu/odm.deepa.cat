@@ -4,6 +4,7 @@ import { LanguageContextProvider } from './_src/components/languageContext';
 import { LowResourceProvider } from './_src/components/lowResourceContext';
 import { HideLoreProvider } from './_src/components/items/hideLoreContext';
 import { HideObtainmentProvider } from './_src/components/items/hideObtainmentContext';
+import { HideSkinsProvider } from './_src/components/items/hideSkinsContext';
 import { MaxMasterworkProvider } from './_src/components/items/maxMasterworkContext';
 import Header, { HeaderNav } from './_src/components/header';
 import Footer from './_src/components/footer';
@@ -62,13 +63,15 @@ export default async function StsLayout({ children }) {
                         <LanguageContextProvider>
                             <HideLoreProvider>
                                 <HideObtainmentProvider>
-                                    <MaxMasterworkProvider>
-                                        <SiteNav showBeta center={<HeaderNav />}>
-                                            <Header />
-                                        </SiteNav>
-                                        <div className="site-main">{children}</div>
-                                        <Footer />
-                                    </MaxMasterworkProvider>
+                                    <HideSkinsProvider>
+                                        <MaxMasterworkProvider>
+                                            <SiteNav showBeta center={<HeaderNav />}>
+                                                <Header />
+                                            </SiteNav>
+                                            <div className="site-main">{children}</div>
+                                            <Footer />
+                                        </MaxMasterworkProvider>
+                                    </HideSkinsProvider>
                                 </HideObtainmentProvider>
                             </HideLoreProvider>
                         </LanguageContextProvider>

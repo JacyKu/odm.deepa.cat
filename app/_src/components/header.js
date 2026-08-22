@@ -5,6 +5,7 @@ import Select from 'react-select';
 import TranslatableText from './translatableText';
 import LoreToggle from './items/loreToggle';
 import ObtainmentToggle from './items/obtainmentToggle';
+import HideSkinsToggle from './items/hideSkinsToggle';
 import MaxMasterworkToggle from './items/maxMasterworkToggle';
 import styles from '../styles/Header.module.css';
 import Link from 'next/link';
@@ -250,6 +251,7 @@ export default function Header() {
                 </label>
                 <LoreToggle className={styles.loreToggle} />
                 <ObtainmentToggle className={styles.loreToggle} />
+                <HideSkinsToggle className={styles.loreToggle} />
                 <MaxMasterworkToggle className={styles.loreToggle} />
                 <HeaderSelect
                     instanceId="font"

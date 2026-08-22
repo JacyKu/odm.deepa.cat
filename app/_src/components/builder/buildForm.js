@@ -2800,6 +2800,8 @@ export default function BuildForm({
                                 itemData={itemData}
                                 hideList
                                 charmNames={charms.map((c) => c.name)}
+                                classSkillNames={currentClassSkills.map((s) => s.name)}
+                                specSkillNames={currentSpecSkills.map((s) => s.name)}
                             ></CharmSelector>
                         </div>
                     </div>
