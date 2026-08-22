@@ -100,10 +100,9 @@ export default function BuildCard({ build, user, base, onToggleFavourite }) {
         event.preventDefault();
         event.stopPropagation();
         if (favBusy) return;
-        if (!user) {
-            window.location.href = `/api/auth/discord/login?next=${encodeURIComponent(window.location.pathname)}`;
-            return;
-        }
+        // Only signed-in Discord users may like builds; the server enforces
+        // this too (401). Without a session the button does nothing.
+        if (!user) return;
         setFavBusy(true);
         fetch(`/api/v1/builds/${build.id}/favourite`, {
             method: build.myFavourite ? 'DELETE' : 'POST',

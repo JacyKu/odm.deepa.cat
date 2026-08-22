@@ -971,10 +971,9 @@ export default function BuildForm({
 
     function toggleFavourite() {
         if (!activeBuildId || !publicState.isPublic || favBusy) return;
-        if (!loggedIn) {
-            window.location.href = `/api/auth/discord/login?next=${encodeURIComponent(window.location.pathname)}`;
-            return;
-        }
+        // Only signed-in Discord users may like builds; the server enforces
+        // this too (401). Without a session the button does nothing.
+        if (!loggedIn) return;
         setFavBusy(true);
         const isFav = favState ? favState.favourite : false;
         fetch(`/api/v1/builds/${activeBuildId}/favourite`, { method: isFav ? 'DELETE' : 'POST' })
