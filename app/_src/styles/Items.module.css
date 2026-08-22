@@ -987,6 +987,7 @@
     color: var(--text-2);
     cursor: pointer;
     font-weight: 700;
+    font-size: 14px;
     transition:
         color 150ms ease,
         border-color 150ms ease;

@@ -174,6 +174,7 @@ const enabledBoxes = {
     tempo: false,
     cloaked: false,
     earth_aspect: false,
+    curse_of_the_veil: false,
 
     // Situational Damage
     smite: false,
@@ -226,6 +227,7 @@ const situationalDefenses = [
     'tempo',
     'cloaked',
     'earth_aspect',
+    'curse_of_the_veil',
 ];
 
 const situationalFlatDamage = ['smite', 'duelist', 'slayer', 'point_blank', 'sniper'];
@@ -1907,7 +1909,10 @@ export default function BuildForm({
     }
 
     function checkboxChanged(event) {
-        const name = event.target.name.replace(' ', '_').replace(/[()]/g, ''); // replace spaces so we can still have them visually without breaking existing stuff
+        // Checkbox names come in lowercase, with words separated by spaces.
+        // Replace every space so multi-word situationals (e.g. "curse of the
+        // veil") map to their snake_case enabledBoxes key.
+        const name = event.target.name.replace(/ /g, '_').replace(/[()]/g, ''); // replace spaces so we can still have them visually without breaking existing stuff
         enabledBoxes[name] = event.target.checked;
         let temp = event.target.checked;
         const retaliationtypes = ['retaliation_normal', 'retaliation_elite', 'retaliation_boss'];

@@ -101,6 +101,7 @@ class Stats {
             abyssal: { enabled: enabledBoxes.abyssal, level: 0 },
             fractal: { enabled: enabledBoxes.fractal, level: 0 },
             skyseeker: { enabled: enabledBoxes.skyseeker, level: 0 },
+            curse_of_the_veil: { enabled: enabledBoxes.curse_of_the_veil, level: 0 },
 
             // fake entries to never throw errors, none of these are real enchantments
             retaliation_normal: { enabled: enabledBoxes.retaliation_normal, level: 0 },
@@ -863,7 +864,12 @@ class Stats {
         this.effHealingRate = effHealingNonRounded.toFixedPerc(2);
         // Fix regen to the actual value per second
         let regenPerSecNonRounded = (1 / 3) * Math.sqrt(this.baseRegenLevel) * this.healingRate.val;
-        regenPerSecNonRounded -= (1 / 3) * this.baseVeilcurseLevel;
+        // Curse of the Veil: drains level health every 3 seconds (level/3 per
+        // second), but only while its situational checkbox is ticked (hostile
+        // mob nearby / recently dealt damage).
+        if (this.situationals.curse_of_the_veil.enabled) {
+            regenPerSecNonRounded -= (1 / 3) * this.baseVeilcurseLevel;
+        }
         if (this.enabledClassAbilityBuffs.taboo_burst) regenPerSecNonRounded -= 0.07 * this.healthFinal;
         // Soothing: regenerates (0.04 * level) health per second.
         if (this.hasDelveInfusion('Soothing')) regenPerSecNonRounded += DELVE_REGEN_PER_LEVEL * this.delveLevel;
